@@ -1,174 +1,205 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Y5 HUT Attendance</title>
+<title>Y5HUT ATTANTANCE</title>
 <style>
-body {
-    font-family: Arial, sans-serif;
-    background: #f1f4f9;
-    margin: 0;
-    padding: 20px;
+*{box-sizing:border-box}
+body{
+ margin:0;font-family:Arial,sans-serif;
+ background:#f1f5f9;color:#172554;
 }
-.container {
-    max-width: 500px;
-    margin: auto;
-    background: white;
-    padding: 22px;
-    border-radius: 15px;
-    box-shadow: 0 3px 15px #ccc;
+header{
+ background:#123c78;color:white;
+ padding:25px 15px;text-align:center;
 }
-h1 {
-    text-align: center;
-    color: #173c72;
+header h1{margin:0;font-size:27px}
+header p{margin-bottom:0;color:#dbeafe}
+.container{max-width:950px;margin:25px auto;padding:15px}
+.cards{
+ display:grid;grid-template-columns:repeat(3,1fr);
+ gap:12px;margin-bottom:20px;
 }
-h3 { text-align: center; }
-input, select, button {
-    width: 100%;
-    padding: 13px;
-    margin: 8px 0;
-    box-sizing: border-box;
-    border-radius: 7px;
-    border: 1px solid #ccc;
-    font-size: 16px;
+.card{
+ background:white;padding:20px;border-radius:12px;
+ text-align:center;box-shadow:0 2px 8px #0001;
 }
-video, canvas {
-    width: 100%;
-    border-radius: 10px;
-    margin-top: 10px;
+.card h2{font-size:28px;margin:5px}
+form,.table-box{
+ background:white;padding:20px;border-radius:12px;
+ margin-bottom:20px;box-shadow:0 2px 8px #0001;
 }
-button {
-    background: #173c72;
-    color: white;
-    border: none;
-    font-weight: bold;
-    cursor: pointer;
+input,select,button{
+ width:100%;padding:12px;margin:8px 0;
+ border:1px solid #cbd5e1;border-radius:7px;
+ font-size:15px;
 }
-button:disabled {
-    background: #999;
+button{
+ background:#1763bd;color:white;border:0;
+ cursor:pointer;font-weight:bold;
 }
-#message {
-    text-align: center;
-    font-weight: bold;
-    color: green;
+button:hover{background:#0c4388}
+.export{background:#15803d}
+table{width:100%;border-collapse:collapse}
+th,td{padding:12px;border-bottom:1px solid #ddd;text-align:left}
+th{background:#eaf2ff}
+.delete{background:#dc2626;padding:7px}
+.table-scroll{overflow-x:auto}
+footer{text-align:center;padding:20px;color:#64748b}
+@media(max-width:600px){
+ .cards{grid-template-columns:1fr}
+ th,td{padding:8px;font-size:13px}
 }
 </style>
 </head>
 <body>
 
+<header>
+<h1>Y5HUT ATTANTANCE</h1>
+<p>Attendance Management System</p>
+</header>
+
 <div class="container">
 
-<h1>Y5 HUT</h1>
-<h3>ONLINE STAFF ATTENDANCE</h3>
-
-<p id="date" style="text-align:center"></p>
-
-<label>Employee Name</label>
-<input type="text" id="employee" placeholder="Enter Your Name">
-
-<label>Branch</label>
-<select id="branch">
-<option value="">Select Branch</option>
-<option>Main Branch</option>
-<option>AKP</option>
-<option>Apple Hut</option>
-<option>Pottuvil</option>
-<option>Talk Town</option>
-</select>
-
-<h3>SELFIE VERIFICATION</h3>
-
-<video id="camera" autoplay playsinline></video>
-<canvas id="photo" style="display:none"></canvas>
-
-<button onclick="startCamera()">OPEN CAMERA</button>
-<button onclick="takePhoto()">TAKE SELFIE</button>
-
-<p id="message">Please take your selfie</p>
-
-<button onclick="submitAttendance('Check In')">CHECK IN</button>
-<button onclick="submitAttendance('Lunch Out')">LUNCH OUT</button>
-<button onclick="submitAttendance('Lunch In')">LUNCH IN</button>
-<button onclick="submitAttendance('Check Out')">CHECK OUT</button>
-
+<div class="cards">
+ <div class="card">
+  <p>Total Records</p><h2 id="total">0</h2>
+ </div>
+ <div class="card">
+  <p>Present</p><h2 id="present">0</h2>
+ </div>
+ <div class="card">
+  <p>Absent</p><h2 id="absent">0</h2>
+ </div>
 </div>
 
+<form id="attendanceForm">
+<h2>Mark Attendance</h2>
+
+<label>Student / Employee Name</label>
+<input id="person" type="text" placeholder="Enter Name" required>
+
+<label>Date</label>
+<input id="date" type="date" required>
+
+<label>Attendance Status</label>
+<select id="status">
+<option value="Present">Present</option>
+<option value="Absent">Absent</option>
+<option value="Late">Late</option>
+</select>
+
+<button type="submit">SAVE ATTENDANCE</button>
+</form>
+
+<div class="table-box">
+<h2>Attendance Records</h2>
+<button class="export" onclick="downloadCSV()">DOWNLOAD CSV REPORT</button>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Date</th>
+<th>Status</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody id="records"></tbody>
+</table>
+</div>
+</div>
+</div>
+
+<footer>© 2026 Y5HUT ATTANTANCE</footer>
+
 <script>
+let data = JSON.parse(localStorage.getItem("y5hutRecords") || "[]");
 
-document.getElementById("date").innerText =
-new Date().toLocaleString();
+const dateInput = document.getElementById("date");
+dateInput.value = new Date().toLocaleDateString("en-CA");
 
-let camera = document.getElementById("camera");
-let canvas = document.getElementById("photo");
-let selfie = "";
-
-async function startCamera() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "user" },
-            audio: false
-        });
-        camera.srcObject = stream;
-    } catch(error) {
-        alert("Camera permission required!");
-    }
+function saveData(){
+ localStorage.setItem("y5hutRecords",JSON.stringify(data));
 }
 
-function takePhoto() {
-    if (!camera.srcObject) {
-        alert("Please open camera first");
-        return;
-    }
+function render(){
+ const table=document.getElementById("records");
+ table.innerHTML="";
 
-    canvas.width = camera.videoWidth;
-    canvas.height = camera.videoHeight;
+ data.forEach((item,index)=>{
+  const tr=document.createElement("tr");
 
-    canvas.getContext("2d").drawImage(
-        camera, 0, 0, canvas.width, canvas.height
-    );
+  [item.name,item.date,item.status].forEach(value=>{
+   const td=document.createElement("td");
+   td.textContent=value;
+   tr.appendChild(td);
+  });
 
-    selfie = canvas.toDataURL("image/jpeg", 0.7);
-    document.getElementById("message").innerText =
-    "Selfie Captured Successfully!";
+  const action=document.createElement("td");
+  const btn=document.createElement("button");
+  btn.textContent="Delete";
+  btn.className="delete";
+  btn.onclick=()=>{
+   if(confirm("Delete this record?")){
+    data.splice(index,1);
+    saveData();
+    render();
+   }
+  };
+  action.appendChild(btn);
+  tr.appendChild(action);
+  table.appendChild(tr);
+ });
+
+ document.getElementById("total").textContent=data.length;
+ document.getElementById("present").textContent=
+ data.filter(x=>x.status==="Present").length;
+ document.getElementById("absent").textContent=
+ data.filter(x=>x.status==="Absent").length;
 }
 
-function submitAttendance(type) {
+document.getElementById("attendanceForm")
+.addEventListener("submit",function(e){
+ e.preventDefault();
 
-    let employee = document.getElementById("employee").value;
-    let branch = document.getElementById("branch").value;
+ const name=document.getElementById("person").value.trim();
+ const date=dateInput.value;
+ const status=document.getElementById("status").value;
 
-    if (!employee || !branch || !selfie) {
-        alert("Enter name, select branch and take selfie!");
-        return;
-    }
+ if(data.some(x=>x.name.toLowerCase()===name.toLowerCase() && x.date===date)){
+  alert("Attendance already exists for this person and date!");
+  return;
+ }
 
-    let record = {
-        employee: employee,
-        branch: branch,
-        type: type,
-        date: new Date().toLocaleDateString(),
-        time: new Date().toLocaleTimeString(),
-        selfie: selfie
-    };
+ data.push({name,date,status});
+ saveData();
+ render();
+ this.reset();
+ dateInput.value=new Date().toLocaleDateString("en-CA");
+ alert("Attendance Saved Successfully!");
+});
 
-    let records = JSON.parse(
-        localStorage.getItem("y5attendance") || "[]"
-    );
+function downloadCSV(){
+ let csv="Name,Date,Status\n";
+ data.forEach(x=>{
+  csv+=[x.name,x.date,x.status].map(v=>
+   '"'+String(v).replace(/"/g,'""')+'"'
+  ).join(",")+"\n";
+ });
 
-    records.push(record);
-
-    localStorage.setItem(
-        "y5attendance", JSON.stringify(records)
-    );
-
-    alert(type + " Saved Successfully!");
-
-    selfie = "";
-    document.getElementById("message").innerText =
-    "Attendance Saved!";
+ const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;
+ a.download="Y5HUT_Attendance.csv";
+ a.click();
+ URL.revokeObjectURL(url);
 }
 
+render();
 </script>
 </body>
 </html>
