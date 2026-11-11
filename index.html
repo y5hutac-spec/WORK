@@ -3,55 +3,24 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Y5HUT ATTANTANCE</title>
 <style>
-*{box-sizing:border-box}
-body{
- margin:0;font-family:Arial,sans-serif;
- background:#f1f5f9;color:#172554;
-}
-header{
- background:#123c78;color:white;
- padding:25px 15px;text-align:center;
-}
-header h1{margin:0;font-size:27px}
-header p{margin-bottom:0;color:#dbeafe}
-.container{max-width:950px;margin:25px auto;padding:15px}
-.cards{
- display:grid;grid-template-columns:repeat(3,1fr);
- gap:12px;margin-bottom:20px;
-}
-.card{
- background:white;padding:20px;border-radius:12px;
- text-align:center;box-shadow:0 2px 8px #0001;
-}
-.card h2{font-size:28px;margin:5px}
-form,.table-box{
- background:white;padding:20px;border-radius:12px;
- margin-bottom:20px;box-shadow:0 2px 8px #0001;
-}
-input,select,button{
- width:100%;padding:12px;margin:8px 0;
- border:1px solid #cbd5e1;border-radius:7px;
- font-size:15px;
-}
-button{
- background:#1763bd;color:white;border:0;
- cursor:pointer;font-weight:bold;
-}
-button:hover{background:#0c4388}
-.export{background:#15803d}
+body{font-family:Arial;background:#f1f5f9;margin:0;color:#172554}
+header{background:#123c78;color:white;text-align:center;padding:25px}
+.container{max-width:800px;margin:25px auto;padding:15px}
+.box{background:white;padding:20px;border-radius:12px;margin-bottom:20px}
+input,select,button{width:100%;padding:13px;margin:8px 0;box-sizing:border-box;border:1px solid #ccc;border-radius:7px;font-size:16px}
+button{background:#1763bd;color:white;border:0;font-weight:bold;cursor:pointer}
+button:active{background:#0c4388}
 table{width:100%;border-collapse:collapse}
-th,td{padding:12px;border-bottom:1px solid #ddd;text-align:left}
+th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left}
 th{background:#eaf2ff}
-.delete{background:#dc2626;padding:7px}
-.table-scroll{overflow-x:auto}
-footer{text-align:center;padding:20px;color:#64748b}
-@media(max-width:600px){
- .cards{grid-template-columns:1fr}
- th,td{padding:8px;font-size:13px}
-}
+.scroll{overflow-x:auto}
+.delete{background:#dc2626}
+.stats{display:flex;gap:10px}
+.stats div{flex:1;background:white;padding:15px;text-align:center;border-radius:10px}
+@media(max-width:500px){.stats{flex-direction:column}}
 </style>
 </head>
 <body>
@@ -63,41 +32,39 @@ footer{text-align:center;padding:20px;color:#64748b}
 
 <div class="container">
 
-<div class="cards">
- <div class="card">
-  <p>Total Records</p><h2 id="total">0</h2>
- </div>
- <div class="card">
-  <p>Present</p><h2 id="present">0</h2>
- </div>
- <div class="card">
-  <p>Absent</p><h2 id="absent">0</h2>
- </div>
+<div class="stats">
+<div>Total Records<h2 id="total">0</h2></div>
+<div>Present<h2 id="present">0</h2></div>
+<div>Absent<h2 id="absent">0</h2></div>
 </div>
 
-<form id="attendanceForm">
+<div class="box">
 <h2>Mark Attendance</h2>
 
 <label>Student / Employee Name</label>
-<input id="person" type="text" placeholder="Enter Name" required>
+<input id="person" type="text" placeholder="Enter Name">
 
 <label>Date</label>
-<input id="date" type="date" required>
+<input id="date" type="date">
 
-<label>Attendance Status</label>
+<label>Status</label>
 <select id="status">
 <option value="Present">Present</option>
 <option value="Absent">Absent</option>
 <option value="Late">Late</option>
 </select>
 
-<button type="submit">SAVE ATTENDANCE</button>
-</form>
+<button type="button" onclick="saveAttendance()">
+SAVE ATTENDANCE
+</button>
 
-<div class="table-box">
+<p id="message"></p>
+</div>
+
+<div class="box">
 <h2>Attendance Records</h2>
-<button class="export" onclick="downloadCSV()">DOWNLOAD CSV REPORT</button>
-<div class="table-scroll">
+<button onclick="downloadCSV()">DOWNLOAD CSV</button>
+<div class="scroll">
 <table>
 <thead>
 <tr>
@@ -113,93 +80,144 @@ footer{text-align:center;padding:20px;color:#64748b}
 </div>
 </div>
 
-<footer>© 2026 Y5HUT ATTANTANCE</footer>
-
 <script>
-let data = JSON.parse(localStorage.getItem("y5hutRecords") || "[]");
+let attendance = [];
 
-const dateInput = document.getElementById("date");
-dateInput.value = new Date().toLocaleDateString("en-CA");
-
-function saveData(){
- localStorage.setItem("y5hutRecords",JSON.stringify(data));
+try {
+ attendance = JSON.parse(
+ localStorage.getItem("y5hutRecords") || "[]"
+ );
+ if (!Array.isArray(attendance)) attendance = [];
+} catch(error) {
+ attendance = [];
 }
 
-function render(){
- const table=document.getElementById("records");
- table.innerHTML="";
-
- data.forEach((item,index)=>{
-  const tr=document.createElement("tr");
-
-  [item.name,item.date,item.status].forEach(value=>{
-   const td=document.createElement("td");
-   td.textContent=value;
-   tr.appendChild(td);
-  });
-
-  const action=document.createElement("td");
-  const btn=document.createElement("button");
-  btn.textContent="Delete";
-  btn.className="delete";
-  btn.onclick=()=>{
-   if(confirm("Delete this record?")){
-    data.splice(index,1);
-    saveData();
-    render();
-   }
-  };
-  action.appendChild(btn);
-  tr.appendChild(action);
-  table.appendChild(tr);
- });
-
- document.getElementById("total").textContent=data.length;
- document.getElementById("present").textContent=
- data.filter(x=>x.status==="Present").length;
- document.getElementById("absent").textContent=
- data.filter(x=>x.status==="Absent").length;
+function localDate(){
+ const d = new Date();
+ const offset = d.getTimezoneOffset();
+ return new Date(d.getTime()-offset*60000)
+ .toISOString().slice(0,10);
 }
 
-document.getElementById("attendanceForm")
-.addEventListener("submit",function(e){
- e.preventDefault();
+document.getElementById("date").value = localDate();
 
- const name=document.getElementById("person").value.trim();
- const date=dateInput.value;
- const status=document.getElementById("status").value;
+function saveAttendance(){
 
- if(data.some(x=>x.name.toLowerCase()===name.toLowerCase() && x.date===date)){
-  alert("Attendance already exists for this person and date!");
+ const name = document.getElementById("person").value.trim();
+ const date = document.getElementById("date").value;
+ const status = document.getElementById("status").value;
+ const message = document.getElementById("message");
+
+ if(!name){
+  alert("Please enter Name!");
   return;
  }
 
- data.push({name,date,status});
- saveData();
- render();
- this.reset();
- dateInput.value=new Date().toLocaleDateString("en-CA");
- alert("Attendance Saved Successfully!");
-});
+ if(!date){
+  alert("Please select Date!");
+  return;
+ }
 
-function downloadCSV(){
- let csv="Name,Date,Status\n";
- data.forEach(x=>{
-  csv+=[x.name,x.date,x.status].map(v=>
-   '"'+String(v).replace(/"/g,'""')+'"'
-  ).join(",")+"\n";
+ const exists = attendance.some(
+ x => x.name.toLowerCase() === name.toLowerCase()
+ && x.date === date
+ );
+
+ if(exists){
+  alert("Attendance already exists!");
+  return;
+ }
+
+ const record = {name:name,date:date,status:status};
+
+ attendance.push(record);
+
+ try{
+  localStorage.setItem(
+   "y5hutRecords",
+   JSON.stringify(attendance)
+  );
+ }catch(error){
+  attendance.pop();
+  alert("Unable to save. Browser storage may be unavailable.");
+  return;
+ }
+
+ message.textContent = "Attendance Saved Successfully!";
+ message.style.color = "green";
+
+ document.getElementById("person").value = "";
+ document.getElementById("date").value = localDate();
+
+ renderRecords();
+}
+
+function renderRecords(){
+
+ const table = document.getElementById("records");
+ table.innerHTML = "";
+
+ attendance.forEach((item,index)=>{
+
+  const row = document.createElement("tr");
+
+  [item.name,item.date,item.status].forEach(value=>{
+   const cell = document.createElement("td");
+   cell.textContent = value;
+   row.appendChild(cell);
+  });
+
+  const action = document.createElement("td");
+  const button = document.createElement("button");
+
+  button.textContent = "Delete";
+  button.className = "delete";
+
+  button.onclick = function(){
+   if(confirm("Delete this record?")){
+    attendance.splice(index,1);
+    localStorage.setItem(
+     "y5hutRecords",JSON.stringify(attendance)
+    );
+    renderRecords();
+   }
+  };
+
+  action.appendChild(button);
+  row.appendChild(action);
+  table.appendChild(row);
  });
 
- const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
- const url=URL.createObjectURL(blob);
- const a=document.createElement("a");
+ document.getElementById("total").textContent=attendance.length;
+ document.getElementById("present").textContent=
+ attendance.filter(x=>x.status==="Present").length;
+ document.getElementById("absent").textContent=
+ attendance.filter(x=>x.status==="Absent").length;
+}
+
+function downloadCSV(){
+
+ let csv = "Name,Date,Status\n";
+
+ attendance.forEach(x=>{
+  csv += [x.name,x.date,x.status]
+   .map(v=>'"'+String(v).replace(/"/g,'""')+'"')
+   .join(",")+"\n";
+ });
+
+ const blob = new Blob(["\uFEFF"+csv],{
+  type:"text/csv;charset=utf-8;"
+ });
+
+ const url = URL.createObjectURL(blob);
+ const a = document.createElement("a");
  a.href=url;
- a.download="Y5HUT_Attendance.csv";
+ a.download="Y5HUT_ATTENDANCE.csv";
  a.click();
  URL.revokeObjectURL(url);
 }
 
-render();
+renderRecords();
 </script>
 </body>
 </html>
