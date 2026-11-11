@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Y5 HUT Attendance</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f1f4f9;
+    margin: 0;
+    padding: 20px;
+}
+.container {
+    max-width: 500px;
+    margin: auto;
+    background: white;
+    padding: 22px;
+    border-radius: 15px;
+    box-shadow: 0 3px 15px #ccc;
+}
+h1 {
+    text-align: center;
+    color: #173c72;
+}
+h3 { text-align: center; }
+input, select, button {
+    width: 100%;
+    padding: 13px;
+    margin: 8px 0;
+    box-sizing: border-box;
+    border-radius: 7px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+}
+video, canvas {
+    width: 100%;
+    border-radius: 10px;
+    margin-top: 10px;
+}
+button {
+    background: #173c72;
+    color: white;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+}
+button:disabled {
+    background: #999;
+}
+#message {
+    text-align: center;
+    font-weight: bold;
+    color: green;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>Y5 HUT</h1>
+<h3>ONLINE STAFF ATTENDANCE</h3>
+
+<p id="date" style="text-align:center"></p>
+
+<label>Employee Name</label>
+<input type="text" id="employee" placeholder="Enter Your Name">
+
+<label>Branch</label>
+<select id="branch">
+<option value="">Select Branch</option>
+<option>Main Branch</option>
+<option>AKP</option>
+<option>Apple Hut</option>
+<option>Pottuvil</option>
+<option>Talk Town</option>
+</select>
+
+<h3>SELFIE VERIFICATION</h3>
+
+<video id="camera" autoplay playsinline></video>
+<canvas id="photo" style="display:none"></canvas>
+
+<button onclick="startCamera()">OPEN CAMERA</button>
+<button onclick="takePhoto()">TAKE SELFIE</button>
+
+<p id="message">Please take your selfie</p>
+
+<button onclick="submitAttendance('Check In')">CHECK IN</button>
+<button onclick="submitAttendance('Lunch Out')">LUNCH OUT</button>
+<button onclick="submitAttendance('Lunch In')">LUNCH IN</button>
+<button onclick="submitAttendance('Check Out')">CHECK OUT</button>
+
+</div>
+
+<script>
+
+document.getElementById("date").innerText =
+new Date().toLocaleString();
+
+let camera = document.getElementById("camera");
+let canvas = document.getElementById("photo");
+let selfie = "";
+
+async function startCamera() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user" },
+            audio: false
+        });
+        camera.srcObject = stream;
+    } catch(error) {
+        alert("Camera permission required!");
+    }
+}
+
+function takePhoto() {
+    if (!camera.srcObject) {
+        alert("Please open camera first");
+        return;
+    }
+
+    canvas.width = camera.videoWidth;
+    canvas.height = camera.videoHeight;
+
+    canvas.getContext("2d").drawImage(
+        camera, 0, 0, canvas.width, canvas.height
+    );
+
+    selfie = canvas.toDataURL("image/jpeg", 0.7);
+    document.getElementById("message").innerText =
+    "Selfie Captured Successfully!";
+}
+
+function submitAttendance(type) {
+
+    let employee = document.getElementById("employee").value;
+    let branch = document.getElementById("branch").value;
+
+    if (!employee || !branch || !selfie) {
+        alert("Enter name, select branch and take selfie!");
+        return;
+    }
+
+    let record = {
+        employee: employee,
+        branch: branch,
+        type: type,
+        date: new Date().toLocaleDateString(),
+        time: new Date().toLocaleTimeString(),
+        selfie: selfie
+    };
+
+    let records = JSON.parse(
+        localStorage.getItem("y5attendance") || "[]"
+    );
+
+    records.push(record);
+
+    localStorage.setItem(
+        "y5attendance", JSON.stringify(records)
+    );
+
+    alert(type + " Saved Successfully!");
+
+    selfie = "";
+    document.getElementById("message").innerText =
+    "Attendance Saved!";
+}
+
+</script>
+</body>
+</html>
