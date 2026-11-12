@@ -26,6 +26,10 @@ table{width:100%;border-collapse:collapse}
 th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left;white-space:nowrap}
 th{background:#eaf2ff}
 .person-list{padding-left:20px}
+.employee-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.employee-grid label{display:block;font-weight:bold;font-size:14px}
+.employee-actions{display:flex;gap:6px}.employee-actions button{width:auto;padding:7px 10px}
+@media(max-width:650px){.employee-grid{display:block}}
 .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .topbar button{width:auto;padding:10px 18px}
 #appShell[hidden],#loginBox[hidden]{display:none}
@@ -56,6 +60,29 @@ th{background:#eaf2ff}
       <div>Total Records<h2 id="total">0</h2></div>
       <div>Present<h2 id="present">0</h2></div>
       <div>Absent<h2 id="absent">0</h2></div>
+    </div>
+
+
+    <div class="box">
+      <h2>Employee Management</h2>
+      <p class="note">Add and manage Y5HUT company employees. Employee records are stored in the Firebase employees collection.</p>
+      <div class="employee-grid">
+        <div><label for="employeeId">Employee ID</label><input id="employeeId" readonly placeholder="Auto-generated"></div>
+        <div><label for="employeeName">Full Name *</label><input id="employeeName" placeholder="Employee full name"></div>
+        <div><label for="employeeDepartment">Department</label><input id="employeeDepartment" placeholder="Department"></div>
+        <div><label for="employeeDesignation">Designation</label><input id="employeeDesignation" placeholder="Job title"></div>
+        <div><label for="employeePhone">Mobile Number</label><input id="employeePhone" type="tel" placeholder="Mobile number (optional)"></div>
+      </div>
+      <button id="saveEmployee">ADD EMPLOYEE</button>
+      <button id="cancelEmployeeEdit" class="secondary" hidden>CANCEL EDIT</button>
+      <p id="employeeMessage" class="status" aria-live="polite"></p>
+      <h3>Employee List</h3>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Employee ID</th><th>Name</th><th>Department</th><th>Designation</th><th>Mobile</th><th>Actions</th></tr></thead>
+          <tbody id="employeeRows"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="box">
@@ -110,7 +137,7 @@ th{background:#eaf2ff}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBLNSMhtG3P8k39_2tzmU3xe8oyGHYMfIY",
@@ -126,6 +153,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const attendanceRef = collection(db, "attendance");
+const employeesRef = collection(db, "employees");
 
 const MODEL_URL = "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights";
 const MATCH_THRESHOLD = 0.50;
@@ -135,6 +163,9 @@ let attendanceStream = null;
 let attendance = [];
 let faceProfiles = readStore("y5hutFaceProfiles", []);
 let unsubscribeAttendance = null;
+let unsubscribeEmployees = null;
+let employees = [];
+let editingEmployeeId = null;
 
 function readStore(key, fallback) {
   try { const value = JSON.parse(localStorage.getItem(key) || "null"); return value ?? fallback; }
@@ -153,6 +184,7 @@ function setStatus(id, message, error=false) {
   if (el) { el.textContent=message; el.style.color=error?"#b91c1c":"#166534"; }
 }
 document.getElementById("date").value = localDate();
+prepareEmployeeId();
 
 function friendlyError(error) {
   const code = error?.code || "";
@@ -189,12 +221,14 @@ onAuthStateChanged(auth, user => {
     loginBox.hidden=true; appShell.hidden=false;
     document.getElementById("signedInAs").textContent="Signed in: "+(user.email || "Admin");
     listenForAttendance();
+    listenForEmployees();
     renderPeople();
   } else {
     appShell.hidden=true; loginBox.hidden=false;
     attendance=[];
     renderRecords();
     if(unsubscribeAttendance){unsubscribeAttendance();unsubscribeAttendance=null;}
+    if(unsubscribeEmployees){unsubscribeEmployees();unsubscribeEmployees=null;}
   }
 });
 
@@ -206,6 +240,100 @@ function listenForAttendance(){
     renderRecords();
   },error=>setStatus("message",friendlyError(error),true));
 }
+
+
+function listenForEmployees(){
+  if(unsubscribeEmployees) unsubscribeEmployees();
+  unsubscribeEmployees=onSnapshot(employeesRef,snapshot=>{
+    employees=snapshot.docs.map(d=>({id:d.id,...d.data()}))
+      .sort((a,b)=>(a.employeeId||"").localeCompare(b.employeeId||""));
+    renderEmployees();
+  },error=>setStatus("employeeMessage",friendlyError(error),true));
+}
+async function nextEmployeeId(){
+  const snap=await getDocs(employeesRef);
+  let max=0;
+  snap.forEach(d=>{
+    const match=String(d.data().employeeId||"").match(/^Y5HUT(\d+)$/i);
+    if(match) max=Math.max(max,Number(match[1]));
+  });
+  return "Y5HUT"+String(max+1).padStart(3,"0");
+}
+function resetEmployeeForm(){
+  editingEmployeeId=null;
+  document.getElementById("employeeId").value="";
+  document.getElementById("employeeName").value="";
+  document.getElementById("employeeDepartment").value="";
+  document.getElementById("employeeDesignation").value="";
+  document.getElementById("employeePhone").value="";
+  document.getElementById("saveEmployee").textContent="ADD EMPLOYEE";
+  document.getElementById("cancelEmployeeEdit").hidden=true;
+  prepareEmployeeId();
+}
+async function prepareEmployeeId(){
+  if(editingEmployeeId) return;
+  try{document.getElementById("employeeId").value=await nextEmployeeId();}
+  catch(e){setStatus("employeeMessage",friendlyError(e),true);}
+}
+function renderEmployees(){
+  const body=document.getElementById("employeeRows");
+  if(!body) return;
+  body.innerHTML="";
+  employees.forEach(emp=>{
+    const row=document.createElement("tr");
+    [emp.employeeId,emp.name,emp.department||"",emp.designation||"",emp.phone||""].forEach(value=>{
+      const cell=document.createElement("td");cell.textContent=value||"";row.appendChild(cell);
+    });
+    const actions=document.createElement("td");
+    const wrap=document.createElement("div");wrap.className="employee-actions";
+    const edit=document.createElement("button");edit.textContent="Edit";edit.className="secondary";
+    edit.onclick=()=>{
+      editingEmployeeId=emp.id;
+      document.getElementById("employeeId").value=emp.employeeId||"";
+      document.getElementById("employeeName").value=emp.name||"";
+      document.getElementById("employeeDepartment").value=emp.department||"";
+      document.getElementById("employeeDesignation").value=emp.designation||"";
+      document.getElementById("employeePhone").value=emp.phone||"";
+      document.getElementById("saveEmployee").textContent="UPDATE EMPLOYEE";
+      document.getElementById("cancelEmployeeEdit").hidden=false;
+      setStatus("employeeMessage","Editing "+(emp.employeeId||emp.name));
+      document.getElementById("employeeName").focus();
+    };
+    const del=document.createElement("button");del.textContent="Delete";del.className="danger";
+    del.onclick=async()=>{
+      if(!confirm("Delete employee "+(emp.name||"")+"?")) return;
+      try{await deleteDoc(doc(db,"employees",emp.id));setStatus("employeeMessage","Employee deleted.");}
+      catch(e){setStatus("employeeMessage",friendlyError(e),true);}
+    };
+    wrap.append(edit,del);actions.appendChild(wrap);row.appendChild(actions);body.appendChild(row);
+  });
+}
+document.getElementById("saveEmployee").onclick=async()=>{
+  const name=document.getElementById("employeeName").value.trim();
+  if(!name) return setStatus("employeeMessage","Enter employee name.",true);
+  const data={
+    name,
+    department:document.getElementById("employeeDepartment").value.trim(),
+    designation:document.getElementById("employeeDesignation").value.trim(),
+    phone:document.getElementById("employeePhone").value.trim(),
+    updatedAt:serverTimestamp()
+  };
+  const button=document.getElementById("saveEmployee");button.disabled=true;
+  try{
+    if(editingEmployeeId){
+      await updateDoc(doc(db,"employees",editingEmployeeId),data);
+      setStatus("employeeMessage","Employee updated successfully.");
+    }else{
+      data.employeeId=await nextEmployeeId();
+      data.createdAt=serverTimestamp();
+      await addDoc(employeesRef,data);
+      setStatus("employeeMessage","Employee added: "+data.employeeId);
+    }
+    resetEmployeeForm();
+  }catch(e){setStatus("employeeMessage",friendlyError(e),true);}
+  finally{button.disabled=false;}
+};
+document.getElementById("cancelEmployeeEdit").onclick=()=>{resetEmployeeForm();setStatus("employeeMessage","Edit cancelled.");};
 
 async function loadModels() {
   if (modelsReady) return;
