@@ -1,9 +1,14 @@
+
 name: Y5HUT Automatic Leave
 
 on:
   schedule:
     - cron: "29 18 * * *"
+
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   mark-leave:
@@ -24,7 +29,8 @@ jobs:
       - name: Mark Employees as Leave
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: |2
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+        run: |
           node <<'NODE'
           const admin = require("firebase-admin");
 
@@ -39,6 +45,7 @@ jobs:
           const db = admin.firestore();
 
           async function run() {
+
             const parts = new Intl.DateTimeFormat("en-GB", {
               timeZone: "Asia/Colombo",
               year: "numeric",
@@ -46,12 +53,21 @@ jobs:
               day: "2-digit"
             }).formatToParts(new Date());
 
-            const get = type => parts.find(p => p.type === type).value;
-            const today = `${get("year")}-${get("month")}-${get("day")}`;
+            const get = type =>
+              parts.find(p => p.type === type).value;
 
-            const employees = await db.collection("employees").get();
+            const today =
+              `${get("year")}-${get("month")}-${get("day")}`;
 
-            const records = await db.collection("attendance")
+            console.log("Checking date:", today);
+            console.log("Event:", process.env.GITHUB_EVENT_NAME);
+
+            const employees = await db
+              .collection("employees")
+              .get();
+
+            const records = await db
+              .collection("attendance")
               .where("date", "==", today)
               .get();
 
@@ -59,48 +75,111 @@ jobs:
 
             records.forEach(doc => {
               const d = doc.data();
-              if (d.employeeId) marked.add(d.employeeId);
-              if (d.employeeDocId) marked.add(d.employeeDocId);
+
+              if (d.employeeId) {
+                marked.add(String(d.employeeId));
+              }
+
+              if (d.employeeDocId) {
+                marked.add(String(d.employeeDocId));
+              }
             });
 
+            let leaveCount = 0;
+            let skipCount = 0;
+            let dryRunCount = 0;
+
             for (const employee of employees.docs) {
+
               const data = employee.data();
-              const employeeId = data.employeeId || employee.id;
+
+              const employeeId =
+                String(data.employeeId || employee.id);
 
               if (
                 marked.has(employeeId) ||
                 marked.has(employee.id)
               ) {
+                console.log("Already recorded:", employeeId);
+                skipCount++;
                 continue;
               }
-  
-            // Manual Run = Dry Run only
-            if (process.env.GITHUB_EVENT_NAME !== "schedule") {
-              console.log("[DRY RUN] Would mark LEAVE:", employeeId);
-              continue;
+
+              // Manual Run: Dry Run only
+              if (
+                process.env.GITHUB_EVENT_NAME !== "schedule"
+              ) {
+                console.log(
+                  "[DRY RUN] Would mark LEAVE:",
+                  employeeId
+                );
+
+                dryRunCount++;
+                continue;
+              }
+
+              const attendanceId =
+                `${today}_${encodeURIComponent(employeeId)}`;
+
+              const attendanceRef = db
+                .collection("attendance")
+                .doc(attendanceId);
+
+              const created = await db.runTransaction(
+                async transaction => {
+
+                  const existing =
+                    await transaction.get(attendanceRef);
+
+                  if (existing.exists) {
+                    return false;
+                  }
+
+                  transaction.set(attendanceRef, {
+                    employeeId: employeeId,
+                    employeeDocId: employee.id,
+                    name: data.name || "",
+                    date: today,
+                    time: "11:59 PM",
+                    status: "LEAVE",
+                    reason: "No attendance recorded",
+                    method: "Automatic",
+                    createdAt:
+                      admin.firestore.FieldValue.serverTimestamp()
+                  });
+
+                  return true;
+                }
+              );
+
+              if (created) {
+                marked.add(employeeId);
+                marked.add(employee.id);
+                leaveCount++;
+
+                console.log("LEAVE marked:", employeeId);
+              } else {
+                skipCount++;
+                console.log("Duplicate prevented:", employeeId);
+              }
             }
 
-            await db.collection("attendance").add({
-              employeeId: employeeId,
-              employeeDocId: employee.id,
-              name: data.name || "",
-              date: today,
-              time: "11:59 PM",
-              status: "LEAVE",
-              reason: "No attendance recorded",
-              method: "Automatic",
-              createdAt: admin.firestore.FieldValue.serverTimestamp()
-            });
-
-            console.log("LEAVE marked:", employeeId);
-  
-
+            console.log("--------------------------------");
+            console.log("Total Employees:", employees.size);
+            console.log("Automatic Leave:", leaveCount);
+            console.log("Already Recorded:", skipCount);
+            console.log("Dry Run Count:", dryRunCount);
             console.log("Completed:", today);
-            }
+            console.log("--------------------------------");
+          }
 
-          run().then(() => process.exit(0))
+          run()
+            .then(() => {
+              console.log("Workflow completed successfully.");
+              process.exit(0);
+            })
             .catch(error => {
-              console.error(error);
+              console.error("Workflow Error:", error);
               process.exit(1);
             });
           NODE
