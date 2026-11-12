@@ -24,7 +24,7 @@ jobs:
       - name: Mark Employees as Leave
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: |
+        run: |2
           node <<'NODE'
           const admin = require("firebase-admin");
 
@@ -74,29 +74,29 @@ jobs:
                 continue;
               }
   
-      // Manual Run = Dry Run only
-      if (process.env.GITHUB_EVENT_NAME !== "schedule") {
-        console.log("[DRY RUN] Would mark LEAVE:", employeeId);
-        continue;
-      }
-
-     await db.collection("attendance").add({
-        employeeId: employeeId,
-        employeeDocId: employee.id,
-        name: data.name || "",
-        date: today,
-        time: "11:59 PM",
-        status: "LEAVE",
-        reason: "No attendance recorded",
-        method: "Automatic",
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-      
-              console.log("LEAVE marked:", employeeId);
+            // Manual Run = Dry Run only
+            if (process.env.GITHUB_EVENT_NAME !== "schedule") {
+              console.log("[DRY RUN] Would mark LEAVE:", employeeId);
+              continue;
             }
 
+            await db.collection("attendance").add({
+              employeeId: employeeId,
+              employeeDocId: employee.id,
+              name: data.name || "",
+              date: today,
+              time: "11:59 PM",
+              status: "LEAVE",
+              reason: "No attendance recorded",
+              method: "Automatic",
+              createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            console.log("LEAVE marked:", employeeId);
+  
+
             console.log("Completed:", today);
-          }
+            }
 
           run().then(() => process.exit(0))
             .catch(error => {
