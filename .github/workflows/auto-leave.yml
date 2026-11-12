@@ -3,7 +3,7 @@ name: Y5HUT Automatic Leave
 
 on:
   schedule:
-    - cron: "29 18 * * *"
+    - cron: "30 12 * * *"
 
   workflow_dispatch:
 
