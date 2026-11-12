@@ -1,0 +1,100 @@
+name: Y5HUT Automatic Leave
+
+on:
+  schedule:
+    - cron: "29 18 * * *"
+  workflow_dispatch:
+
+jobs:
+  mark-leave:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Firebase Admin
+        run: npm install firebase-admin
+
+      - name: Mark Employees as Leave
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          node <<'NODE'
+          const admin = require("firebase-admin");
+
+          const serviceAccount = JSON.parse(
+            process.env.FIREBASE_SERVICE_ACCOUNT
+          );
+
+          admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount)
+          });
+
+          const db = admin.firestore();
+
+          async function run() {
+            const parts = new Intl.DateTimeFormat("en-GB", {
+              timeZone: "Asia/Colombo",
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit"
+            }).formatToParts(new Date());
+
+            const get = type => parts.find(p => p.type === type).value;
+            const today = `${get("year")}-${get("month")}-${get("day")}`;
+
+            const employees = await db.collection("employees").get();
+
+            const records = await db.collection("attendance")
+              .where("date", "==", today)
+              .get();
+
+            const marked = new Set();
+
+            records.forEach(doc => {
+              const d = doc.data();
+              if (d.employeeId) marked.add(d.employeeId);
+              if (d.employeeDocId) marked.add(d.employeeDocId);
+            });
+
+            for (const employee of employees.docs) {
+              const data = employee.data();
+              const employeeId = data.employeeId || employee.id;
+
+              if (
+                marked.has(employeeId) ||
+                marked.has(employee.id)
+              ) {
+                continue;
+              }
+
+              await db.collection("attendance").add({
+                employeeId: employeeId,
+                employeeDocId: employee.id,
+                name: data.name || "",
+                date: today,
+                time: "11:59 PM",
+                status: "LEAVE",
+                reason: "No attendance recorded",
+                method: "Automatic",
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+              });
+
+              console.log("LEAVE marked:", employeeId);
+            }
+
+            console.log("Completed:", today);
+          }
+
+          run().then(() => process.exit(0))
+            .catch(error => {
+              console.error(error);
+              process.exit(1);
+            });
+          NODE
