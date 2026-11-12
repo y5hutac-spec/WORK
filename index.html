@@ -49,12 +49,7 @@ th{background:#eaf2ff}.person-list{padding-left:20px}.employee-grid{display:grid
 
 <div class="box"><h2>Face Scan Attendance</h2><p class="note">Matched employee ID, name, date, time and GPS location are saved in Firebase.</p>
 <button id="startAttendance">START FACE SCAN</button><video id="attendanceVideo" autoplay muted playsinline hidden></video>
-<button id="scanAttendance" disabled>VERIFY FACE & MARK ATTENDANCE</button><p id="scanMessage" class="status" aria-live="polite"></p>
-<div id="reasonBox" hidden>
-  <label for="lateReason">Reason for Late Attendance *</label>
-  <input id="lateReason" type="text"
-         placeholder="Enter your reason">
-</div>
+<button id="scanAttendance" disabled>VERIFY FACE & MARK ATTENDANCE</button><div id="reasonBox" hidden><label for="lateReason">Reason for late attendance *</label><input id="lateReason" type="text" maxlength="300" placeholder="Enter reason"><p class="note">Reason is required for LATE, TOO LATE, OVER LATE and HALF DAY.</p></div><p id="scanMessage" class="status" aria-live="polite"></p></div>
 
 <div class="box"><h2>Manual Attendance</h2><label for="manualEmployee">Select Employee</label><select id="manualEmployee"><option value="">-- Select employee --</option></select>
 <label for="date">Date</label><input id="date" type="date"><label for="status">Status</label>
@@ -82,7 +77,6 @@ const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
 const attendanceRef=collection(db,"attendance"),employeesRef=collection(db,"employees");
 const MODEL_URL="https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights",MATCH_THRESHOLD=.50;
 let modelsReady=false,registerStream=null,attendanceStream=null,attendance=[],employees=[];
-  let pendingAttendanceRecord=null;
 let faceProfiles=readStore("y5hutFaceProfiles",[]),unsubscribeAttendance=null,unsubscribeEmployees=null,editingEmployeeId=null;
 
 function readStore(k,f){try{return JSON.parse(localStorage.getItem(k)||"null")??f}catch(_){return f}}
@@ -102,12 +96,12 @@ document.getElementById("loginButton").onclick=async()=>{
 document.getElementById("logoutButton").onclick=async()=>{stopCamera("register");stopCamera("attendance");await signOut(auth)};
 onAuthStateChanged(auth,user=>{
  const shell=document.getElementById("appShell"),login=document.getElementById("loginBox");
- if(user){login.hidden=true;shell.hidden=false;document.getElementById("signedInAs").textContent="Signed in: "+(user.email||"Admin");listenForAttendance();listenForEmployees();renderPeople()}
- else{shell.hidden=true;login.hidden=false;attendance=[];employees=[];renderRecords();if(unsubscribeAttendance){unsubscribeAttendance();unsubscribeAttendance=null}if(unsubscribeEmployees){unsubscribeEmployees();unsubscribeEmployees=null}}
+ if(user && (user.email||"").toLowerCase()==="y5hutac@gmail.com"){login.hidden=true;shell.hidden=false;document.getElementById("signedInAs").textContent="Signed in: "+user.email;listenForAttendance();listenForEmployees();renderPeople()}
+ else{if(user)signOut(auth).then(()=>setStatus("loginMessage","This account is not authorized as admin.",true));shell.hidden=true;login.hidden=false;attendance=[];employees=[];renderRecords();if(unsubscribeAttendance){unsubscribeAttendance();unsubscribeAttendance=null}if(unsubscribeEmployees){unsubscribeEmployees();unsubscribeEmployees=null}}
 });
 function listenForAttendance(){if(unsubscribeAttendance)unsubscribeAttendance();unsubscribeAttendance=onSnapshot(query(attendanceRef,orderBy("date","desc")),s=>{attendance=s.docs.map(d=>({id:d.id,...d.data()}));renderRecords()},e=>setStatus("message",friendlyError(e),true))}
 function listenForEmployees(){if(unsubscribeEmployees)unsubscribeEmployees();unsubscribeEmployees=onSnapshot(employeesRef,s=>{employees=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.employeeId||"").localeCompare(b.employeeId||""));renderEmployees();populateEmployeeSelects();prepareEmployeeId()},e=>setStatus("employeeMessage",friendlyError(e),true))}
-async function nextEmployeeId(){const s=await getDocs(employeesRef);let max=0;s.forEach(d=>{const m=String(d.data().employeeId||"").match(/^Y5HUT(\\d+)$/i);if(m)max=Math.max(max,+m[1])});return"Y5HUT"+String(max+1).padStart(3,"0")}
+async function nextEmployeeId(){const s=await getDocs(employeesRef);let max=0;s.forEach(d=>{const m=String(d.data().employeeId||"").match(/^Y5HUT(\d+)$/i);if(m)max=Math.max(max,+m[1])});return"Y5HUT"+String(max+1).padStart(3,"0")}
 async function prepareEmployeeId(){if(editingEmployeeId)return;try{document.getElementById("employeeId").value=await nextEmployeeId()}catch(e){setStatus("employeeMessage",friendlyError(e),true)}}
 function populateEmployeeSelects(){
  ["registerEmployee","manualEmployee"].forEach(id=>{const el=document.getElementById(id),old=el.value;el.innerHTML='<option value="">-- Select employee --</option>';employees.forEach(emp=>{const o=document.createElement("option");o.value=emp.id;o.textContent=(emp.employeeId||"ID missing")+" — "+emp.name;el.appendChild(o)});if(employees.some(e=>e.id===old))el.value=old})
@@ -146,135 +140,47 @@ document.getElementById("saveFace").onclick=async()=>{
 document.getElementById("startAttendance").onclick=async()=>{try{await loadModels();if(!faceProfiles.length)throw Error("No faces registered on this device. Register an employee first.");await openCamera(document.getElementById("attendanceVideo"),"attendance");document.getElementById("scanAttendance").disabled=false;setStatus("scanMessage","Camera ready. Face the camera.")}catch(e){setStatus("scanMessage",friendlyError(e),true)}};
 function findMatch(descriptor){let best=null,dist=Infinity;for(const p of faceProfiles){const d=faceapi.euclideanDistance(descriptor,new Float32Array(p.descriptor));if(d<dist){dist=d;best=p}}return best&&dist<=MATCH_THRESHOLD?best:null}
 function getPosition(){return new Promise((resolve,reject)=>{if(!navigator.geolocation)return reject(Error("Geolocation unsupported."));navigator.geolocation.getCurrentPosition(resolve,e=>reject(Error(e.code===1?"Location permission denied.":"Unable to get location. Enable GPS and try again.")),{enableHighAccuracy:true,timeout:15000,maximumAge:0})})}
-document.getElementById("scanAttendance").onclick=async()=>{
-  function getAttendanceStatus(now) {
-  const minutes = now.getHours() * 60 + now.getMinutes();
-
-  if (minutes <= 550) return "ON TIME";
-  if (minutes <= 570) return "LATE";
-  if (minutes <= 600) return "TOO LATE";
-  if (minutes <= 660) return "OVER LATE";
-  return "HALF DAY";
+function getAttendanceStatus(now){
+ const minutes=now.getHours()*60+now.getMinutes();
+ if(minutes<=550)return "ON TIME";       // through 9:10 AM
+ if(minutes<=570)return "LATE";          // 9:11–9:30 AM
+ if(minutes<=600)return "TOO LATE";      // 9:31–10:00 AM
+ if(minutes<=660)return "OVER LATE";     // 10:01–11:00 AM
+ return "HALF DAY";                      // after 11:00 AM
 }
-
-document.getElementById("scanAttendance").onclick = async () => {
-  const button = document.getElementById("scanAttendance");
-  const reasonBox = document.getElementById("reasonBox");
-  const reasonInput = document.getElementById("lateReason");
-
-  button.disabled = true;
-
-  try {
-    // Save after reason is entered
-    if (pendingAttendanceRecord) {
-      const reason = reasonInput.value.trim();
-
-      if (pendingAttendanceRecord.status !== "ON TIME" && !reason) {
-        button.disabled = false;
-        return setStatus("scanMessage", "Please enter the reason.", true);
-      }
-
-      pendingAttendanceRecord.reason = reason;
-
-      await addDoc(attendanceRef, pendingAttendanceRecord);
-
-      setStatus(
-        "scanMessage",
-        "Attendance saved: " +
-        pendingAttendanceRecord.employeeId +
-        " — " + pendingAttendanceRecord.status
-      );
-
-      pendingAttendanceRecord = null;
-      reasonInput.value = "";
-      reasonBox.hidden = true;
-      button.textContent = "VERIFY FACE & MARK ATTENDANCE";
-      stopCamera("attendance");
-      return;
-    }
-
-    const descriptor = await getFaceDescriptor(
-      document.getElementById("attendanceVideo")
-    );
-
-    const match = findMatch(descriptor);
-
-    if (!match) throw Error("Face not recognized.");
-
-    const employee = employees.find(
-      e => e.employeeId === match.employeeId ||
-           e.id === match.employeeDocId
-    );
-
-    if (!employee) throw Error("Employee not found. Register face again.");
-
-    const date = localDate();
-
-    if (attendance.some(x =>
-      x.employeeId === employee.employeeId && x.date === date
-    )) {
-      throw Error("Attendance already marked today.");
-    }
-
-    setStatus("scanMessage", "Face matched. Getting location...");
-
-    const position = await getPosition();
-    const now = new Date();
-    const status = getAttendanceStatus(now);
-
-    pendingAttendanceRecord = {
-      employeeId: employee.employeeId,
-      employeeDocId: employee.id,
-      name: employee.name,
-      date: date,
-      time: now.toLocaleTimeString(),
-      status: status,
-      reason: "",
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
-      accuracy: Math.round(position.coords.accuracy),
-      mapsUrl: `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`,
-      method: "Face scan",
-      createdAt: serverTimestamp()
-    };
-
-    if (status !== "ON TIME") {
-      reasonBox.hidden = false;
-      reasonInput.value = "";
-      button.textContent = "SAVE ATTENDANCE";
-      button.disabled = false;
-
-      setStatus(
-        "scanMessage",
-        "Status: " + status + ". Please enter the reason."
-      );
-      return;
-    }
-
-    await addDoc(attendanceRef, pendingAttendanceRecord);
-
-    setStatus("scanMessage", "Attendance saved: " + employee.name + " — ON TIME");
-
-    pendingAttendanceRecord = null;
-    stopCamera("attendance");
-
-  } catch (error) {
-    setStatus("scanMessage", friendlyError(error), true);
-  } finally {
-    if (attendanceStream || pendingAttendanceRecord) {
-      button.disabled = false;
-    }
+let pendingAttendanceRecord=null;
+document.getElementById("scanAttendance").onclick=async()=>{
+ const b=document.getElementById("scanAttendance"),reasonBox=document.getElementById("reasonBox"),reasonInput=document.getElementById("lateReason");
+ b.disabled=true;
+ try{
+  // Second press saves the matched record after the required reason is entered.
+  if(pendingAttendanceRecord){
+   const reason=reasonInput.value.trim();
+   if(pendingAttendanceRecord.status!=="ON TIME"&&!reason){setStatus("scanMessage","Please enter the reason.",true);b.disabled=false;return}
+   pendingAttendanceRecord.reason=reason;
+   await addDoc(attendanceRef,pendingAttendanceRecord);
+   const saved=pendingAttendanceRecord;pendingAttendanceRecord=null;reasonInput.value="";reasonBox.hidden=true;
+   b.textContent="VERIFY FACE & MARK ATTENDANCE";setStatus("scanMessage","Attendance saved: "+saved.employeeId+" — "+saved.status);stopCamera("attendance");return;
   }
-};
- const b=document.getElementById("scanAttendance");b.disabled=true;
- try{const d=await getFaceDescriptor(document.getElementById("attendanceVideo")),match=findMatch(d);if(!match)throw Error("Face not recognized. Attendance not marked.");
- const employee=employees.find(e=>e.employeeId===match.employeeId||e.id===match.employeeDocId);
- if(!employee)throw Error("This face profile is not linked to an active employee. Register the face again.");
- const date=localDate();if(attendance.some(x=>(x.employeeId===employee.employeeId||x.name?.toLowerCase()===employee.name.toLowerCase())&&x.date===date))throw Error(employee.name+" already has an attendance record today.");
- setStatus("scanMessage","Face matched. Getting location…");const pos=await getPosition(),now=new Date();
- const record={employeeId:employee.employeeId,employeeDocId:employee.id,name:employee.name,date,time:now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"}),status:"Present",latitude:pos.coords.latitude,longitude:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy),mapsUrl:`https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`,method:"Face scan",createdAt:serverTimestamp()};
- await addDoc(attendanceRef,record);setStatus("scanMessage",`Attendance marked: ${employee.employeeId} — ${employee.name} at ${record.time}.`);stopCamera("attendance")
- }catch(e){setStatus("scanMessage",friendlyError(e),true);if(attendanceStream)b.disabled=false}
+  const descriptor=await getFaceDescriptor(document.getElementById("attendanceVideo")),match=findMatch(descriptor);
+  if(!match)throw Error("Face not recognized. Attendance not marked.");
+  const employee=employees.find(e=>e.employeeId===match.employeeId||e.id===match.employeeDocId);
+  if(!employee)throw Error("This face profile is not linked to an active employee. Register the face again.");
+  const date=localDate();
+  if(attendance.some(x=>(x.employeeId===employee.employeeId||x.name?.toLowerCase()===employee.name.toLowerCase())&&x.date===date))throw Error(employee.name+" already has an attendance record today.");
+  setStatus("scanMessage","Face matched. Getting location…");
+  const pos=await getPosition(),now=new Date(),status=getAttendanceStatus(now);
+  pendingAttendanceRecord={employeeId:employee.employeeId,employeeDocId:employee.id,name:employee.name,date,
+   time:now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"}),status,reason:"",
+   latitude:pos.coords.latitude,longitude:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy),
+   mapsUrl:`https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`,method:"Face scan",createdAt:serverTimestamp()};
+  if(status!=="ON TIME"){
+   reasonBox.hidden=false;reasonInput.value="";b.textContent="SAVE ATTENDANCE";b.disabled=false;
+   setStatus("scanMessage","Status: "+status+". Please enter the reason.");return;
+  }
+  await addDoc(attendanceRef,pendingAttendanceRecord);pendingAttendanceRecord=null;
+  setStatus("scanMessage","Attendance saved: "+employee.name+" — ON TIME");stopCamera("attendance");
+ }catch(e){pendingAttendanceRecord=null;reasonBox.hidden=true;b.textContent="VERIFY FACE & MARK ATTENDANCE";setStatus("scanMessage",friendlyError(e),true);if(attendanceStream)b.disabled=false}
 };
 document.getElementById("saveManual").onclick=async()=>{
  const employee=employees.find(e=>e.id===document.getElementById("manualEmployee").value),date=document.getElementById("date").value,status=document.getElementById("status").value;
@@ -289,41 +195,12 @@ function renderRecords(){const table=document.getElementById("records");if(!tabl
  const loc=document.createElement("td");if(item.mapsUrl){const a=document.createElement("a");a.href=item.mapsUrl;a.target="_blank";a.rel="noopener";a.textContent="View map";loc.append(a)}else loc.textContent="Not captured";r.append(loc);
  const method=document.createElement("td");method.textContent=item.method||"";r.append(method);
  const action=document.createElement("td"),btn=document.createElement("button");btn.textContent="Delete";btn.className="danger";btn.onclick=async()=>{if(confirm("Delete this attendance record?"))try{await deleteDoc(doc(db,"attendance",item.id))}catch(e){setStatus("message",friendlyError(e),true)}};action.append(btn);r.append(action);table.append(r)});
- document.getElementById("total").textContent=attendance.length;document.getElementById("present").textContent=attendance.filter(x=>x.status==="Present").length;document.getElementById("absent").textContent=attendance.filter(x=>x.status==="Absent").length}
+ document.getElementById("total").textContent=attendance.length;document.getElementById("present").textContent=attendance.filter(x=>["ON TIME","Present"].includes(x.status)).length;document.getElementById("absent").textContent=attendance.filter(x=>["LEAVE","Absent"].includes(x.status)).length}
 document.getElementById("download").onclick=()=>{
-  const cols=[
-    "Employee ID","Name","Date","Time","Status",
-    "Reason","Latitude","Longitude","Location URL",
-    "Accuracy (m)","Method"
-  ];
-
-  const rows=attendance.map(x=>[
-    x.employeeId||"",
-    x.name,
-    x.date,
-    x.time||"",
-    x.status,
-    x.reason||"",
-    x.latitude??"",
-    x.longitude??"",
-    x.mapsUrl||"",
-    x.accuracy??"",
-    x.method||""
-  ]);
-
-  const csv=[cols,...rows]
-    .map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(","))
-    .join("\r\n");
-
-  const blob=new Blob(["\uFEFF"+csv],{
-    type:"text/csv;charset=utf-8;"
-  });
-
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download="Y5HUT_ATTENDANCE.csv";
-  a.click();
-  URL.revokeObjectURL(url);
-};const cols=["Employee ID","Name","Date","Time","Status","Reason","Latitude","Longitude","Location URL","Accuracy (m)","Method"];const rows=attendance.map(x=>[x.employeeId||"",x.name,x.date,x.time||"",x.status,x.latitude??"",x.longitude??"",x.mapsUrl||"",x.accuracy??"",x.method||""]);const csv=[cols,...rows].map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="Y5HUT_ATTENDANCE.csv";a.click();URL.revokeObjectURL(url)};
+ const cols=["Employee ID","Name","Date","Time","Status","Reason","Latitude","Longitude","Location URL","Accuracy (m)","Method"];
+ const rows=attendance.map(x=>[x.employeeId||"",x.name||"",x.date||"",x.time||"",x.status||"",x.reason||"",x.latitude??"",x.longitude??"",x.mapsUrl||"",x.accuracy??"",x.method||""]);
+ const csv=[cols,...rows].map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
+ const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");a.href=url;a.download="Y5HUT_ATTENDANCE.csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
 </script></body></html>
