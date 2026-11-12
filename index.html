@@ -49,7 +49,12 @@ th{background:#eaf2ff}.person-list{padding-left:20px}.employee-grid{display:grid
 
 <div class="box"><h2>Face Scan Attendance</h2><p class="note">Matched employee ID, name, date, time and GPS location are saved in Firebase.</p>
 <button id="startAttendance">START FACE SCAN</button><video id="attendanceVideo" autoplay muted playsinline hidden></video>
-<button id="scanAttendance" disabled>VERIFY FACE & MARK ATTENDANCE</button><p id="scanMessage" class="status" aria-live="polite"></p></div>
+<button id="scanAttendance" disabled>VERIFY FACE & MARK ATTENDANCE</button><p id="scanMessage" class="status" aria-live="polite"></p>
+<div id="reasonBox" hidden>
+  <label for="lateReason">Reason for Late Attendance *</label>
+  <input id="lateReason" type="text"
+         placeholder="Enter your reason">
+</div>
 
 <div class="box"><h2>Manual Attendance</h2><label for="manualEmployee">Select Employee</label><select id="manualEmployee"><option value="">-- Select employee --</option></select>
 <label for="date">Date</label><input id="date" type="date"><label for="status">Status</label>
