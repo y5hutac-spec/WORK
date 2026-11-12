@@ -1,223 +1,280 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Y5HUT ATTANTANCE</title>
+<title>Y5HUT ATTENDANCE</title>
 <style>
-body{font-family:Arial;background:#f1f5f9;margin:0;color:#172554}
-header{background:#123c78;color:white;text-align:center;padding:25px}
-.container{max-width:800px;margin:25px auto;padding:15px}
-.box{background:white;padding:20px;border-radius:12px;margin-bottom:20px}
-input,select,button{width:100%;padding:13px;margin:8px 0;box-sizing:border-box;border:1px solid #ccc;border-radius:7px;font-size:16px}
-button{background:#1763bd;color:white;border:0;font-weight:bold;cursor:pointer}
-button:active{background:#0c4388}
-table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left}
-th{background:#eaf2ff}
-.scroll{overflow-x:auto}
-.delete{background:#dc2626}
+:root{--blue:#123c78;--action:#1763bd;--bg:#f1f5f9;--ink:#172554}
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:var(--bg);margin:0;color:var(--ink)}
+header{background:var(--blue);color:#fff;text-align:center;padding:25px}
+.container{max-width:900px;margin:25px auto;padding:15px}
+.box{background:#fff;padding:20px;border-radius:12px;margin-bottom:20px;box-shadow:0 2px 8px #0000000a}
+input,select,button{width:100%;padding:12px;margin:8px 0;border:1px solid #ccc;border-radius:7px;font-size:15px}
+button{background:var(--action);color:#fff;border:0;font-weight:bold;cursor:pointer}
+button:disabled{opacity:.55;cursor:not-allowed}
+button.secondary{background:#475569}
+button.danger{background:#dc2626}
 .stats{display:flex;gap:10px}
-.stats div{flex:1;background:white;padding:15px;text-align:center;border-radius:10px}
-@media(max-width:500px){.stats{flex-direction:column}}
+.stats div{flex:1;background:#fff;padding:15px;text-align:center;border-radius:10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+video{width:100%;max-height:360px;background:#0f172a;border-radius:10px;display:block}
+.note{font-size:13px;line-height:1.5;color:#475569}
+.status{min-height:22px;font-size:14px;font-weight:bold}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left;white-space:nowrap}
+th{background:#eaf2ff}
+.person-list{padding-left:20px}
+@media(max-width:650px){.stats,.grid{display:block}.stats div{margin-bottom:8px}}
 </style>
 </head>
 <body>
-
-<header>
-<h1>Y5HUT ATTANTANCE</h1>
-<p>Attendance Management System</p>
-</header>
-
+<header><h1>Y5HUT ATTENDANCE</h1><p>Attendance Management System</p></header>
 <div class="container">
+  <div class="stats">
+    <div>Total Records<h2 id="total">0</h2></div>
+    <div>Present<h2 id="present">0</h2></div>
+    <div>Absent<h2 id="absent">0</h2></div>
+  </div>
 
-<div class="stats">
-<div>Total Records<h2 id="total">0</h2></div>
-<div>Present<h2 id="present">0</h2></div>
-<div>Absent<h2 id="absent">0</h2></div>
+  <div class="box">
+    <h2>Face Registration</h2>
+    <p class="note">Register each person once. The face template is stored in this browser only. Use this only with the person's informed consent.</p>
+    <label for="registerName">Student / Employee Name</label>
+    <input id="registerName" type="text" placeholder="Enter full name">
+    <button id="startRegister">OPEN CAMERA FOR REGISTRATION</button>
+    <video id="registerVideo" autoplay muted playsinline hidden></video>
+    <button id="saveFace" disabled>SCAN & REGISTER FACE</button>
+    <p id="registerMessage" class="status" aria-live="polite"></p>
+    <h3>Registered People</h3>
+    <ul id="registeredPeople" class="person-list"></ul>
+  </div>
+
+  <div class="box">
+    <h2>Face Scan Attendance</h2>
+    <p class="note">The browser will ask for camera and location permission. Attendance is saved only after a registered face is matched and location is obtained.</p>
+    <button id="startAttendance">START FACE SCAN</button>
+    <video id="attendanceVideo" autoplay muted playsinline hidden></video>
+    <button id="scanAttendance" disabled>VERIFY FACE & MARK ATTENDANCE</button>
+    <p id="scanMessage" class="status" aria-live="polite"></p>
+  </div>
+
+  <div class="box">
+    <h2>Manual Attendance</h2>
+    <label for="person">Student / Employee Name</label>
+    <input id="person" type="text" placeholder="Enter Name">
+    <label for="date">Date</label>
+    <input id="date" type="date">
+    <label for="status">Status</label>
+    <select id="status"><option>Present</option><option>Absent</option><option>Late</option></select>
+    <button id="saveManual">SAVE ATTENDANCE</button>
+    <p id="message" class="status"></p>
+  </div>
+
+  <div class="box">
+    <h2>Attendance Records</h2>
+    <button id="download">DOWNLOAD CSV</button>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Name</th><th>Date</th><th>Time</th><th>Status</th><th>Location</th><th>Action</th></tr></thead>
+        <tbody id="records"></tbody>
+      </table>
+    </div>
+  </div>
+  <p class="note"><strong>Important:</strong> This GitHub Pages demo stores face templates and attendance in the browser's local storage. They are not shared between devices and are not protected like a secure server database. For production use, add an authenticated backend, encrypted biometric storage, access controls, retention/deletion rules, and a non-biometric attendance alternative.</p>
 </div>
 
-<div class="box">
-<h2>Mark Attendance</h2>
-
-<label>Student / Employee Name</label>
-<input id="person" type="text" placeholder="Enter Name">
-
-<label>Date</label>
-<input id="date" type="date">
-
-<label>Status</label>
-<select id="status">
-<option value="Present">Present</option>
-<option value="Absent">Absent</option>
-<option value="Late">Late</option>
-</select>
-
-<button type="button" onclick="saveAttendance()">
-SAVE ATTENDANCE
-</button>
-
-<p id="message"></p>
-</div>
-
-<div class="box">
-<h2>Attendance Records</h2>
-<button onclick="downloadCSV()">DOWNLOAD CSV</button>
-<div class="scroll">
-<table>
-<thead>
-<tr>
-<th>Name</th>
-<th>Date</th>
-<th>Status</th>
-<th>Action</th>
-</tr>
-</thead>
-<tbody id="records"></tbody>
-</table>
-</div>
-</div>
-</div>
-
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script>
-let attendance = [];
+const MODEL_URL = "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights";
+const MATCH_THRESHOLD = 0.50;
+let modelsReady = false;
+let registerStream = null;
+let attendanceStream = null;
+let attendance = readStore("y5hutRecords", []);
+let faceProfiles = readStore("y5hutFaceProfiles", []);
 
-try {
- attendance = JSON.parse(
- localStorage.getItem("y5hutRecords") || "[]"
- );
- if (!Array.isArray(attendance)) attendance = [];
-} catch(error) {
- attendance = [];
+function readStore(key, fallback) {
+  try { const value = JSON.parse(localStorage.getItem(key) || "null"); return value ?? fallback; }
+  catch (_) { return fallback; }
 }
-
-function localDate(){
- const d = new Date();
- const offset = d.getTimezoneOffset();
- return new Date(d.getTime()-offset*60000)
- .toISOString().slice(0,10);
+function localDate() {
+  const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0,10);
 }
-
+function saveStore(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+  catch (_) { alert("Browser storage is full or unavailable. Nothing was saved."); return false; }
+}
 document.getElementById("date").value = localDate();
 
-function saveAttendance(){
-
- const name = document.getElementById("person").value.trim();
- const date = document.getElementById("date").value;
- const status = document.getElementById("status").value;
- const message = document.getElementById("message");
-
- if(!name){
-  alert("Please enter Name!");
-  return;
- }
-
- if(!date){
-  alert("Please select Date!");
-  return;
- }
-
- const exists = attendance.some(
- x => x.name.toLowerCase() === name.toLowerCase()
- && x.date === date
- );
-
- if(exists){
-  alert("Attendance already exists!");
-  return;
- }
-
- const record = {name:name,date:date,status:status};
-
- attendance.push(record);
-
- try{
-  localStorage.setItem(
-   "y5hutRecords",
-   JSON.stringify(attendance)
-  );
- }catch(error){
-  attendance.pop();
-  alert("Unable to save. Browser storage may be unavailable.");
-  return;
- }
-
- message.textContent = "Attendance Saved Successfully!";
- message.style.color = "green";
-
- document.getElementById("person").value = "";
- document.getElementById("date").value = localDate();
-
- renderRecords();
+async function loadModels() {
+  if (modelsReady) return;
+  setStatus("registerMessage", "Loading face recognition models…");
+  await Promise.all([
+    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+  ]);
+  modelsReady = true;
+}
+async function openCamera(video, mode) {
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error("Camera access requires HTTPS and a supported browser.");
+  const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false});
+  video.srcObject = stream; video.hidden = false; await video.play();
+  if (mode === "register") registerStream = stream; else attendanceStream = stream;
+}
+function stopCamera(mode) {
+  const stream = mode === "register" ? registerStream : attendanceStream;
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  if (mode === "register") { registerStream=null; document.getElementById("registerVideo").hidden=true; }
+  else { attendanceStream=null; document.getElementById("attendanceVideo").hidden=true; }
+}
+function setStatus(id, message, error=false) {
+  const el=document.getElementById(id); el.textContent=message; el.style.color=error?"#b91c1c":"#166534";
+}
+async function getFaceDescriptor(video) {
+  const result = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({inputSize:320,scoreThreshold:0.5}))
+    .withFaceLandmarks().withFaceDescriptor();
+  if (!result) throw new Error("No clear face detected. Face the camera with good lighting and try again.");
+  return Array.from(result.descriptor);
 }
 
-function renderRecords(){
+document.getElementById("startRegister").onclick = async () => {
+  try {
+    await loadModels();
+    await openCamera(document.getElementById("registerVideo"), "register");
+    document.getElementById("saveFace").disabled=false;
+    setStatus("registerMessage","Camera ready. Look directly at the camera, then scan.");
+  } catch(e) { setStatus("registerMessage",e.message,true); }
+};
+document.getElementById("saveFace").onclick = async () => {
+  const name=document.getElementById("registerName").value.trim();
+  if (!name) return setStatus("registerMessage","Enter a name first.",true);
+  try {
+    const descriptor=await getFaceDescriptor(document.getElementById("registerVideo"));
+    const index=faceProfiles.findIndex(p=>p.name.toLowerCase()===name.toLowerCase());
+    const profile={name,descriptor,createdAt:new Date().toISOString()};
+    if(index>=0) faceProfiles[index]=profile; else faceProfiles.push(profile);
+    if(saveStore("y5hutFaceProfiles",faceProfiles)){
+      renderPeople(); setStatus("registerMessage",`Face registered for ${name}.`);
+      document.getElementById("registerName").value="";
+      stopCamera("register"); document.getElementById("saveFace").disabled=true;
+    }
+  } catch(e) { setStatus("registerMessage",e.message,true); }
+};
 
- const table = document.getElementById("records");
- table.innerHTML = "";
-
- attendance.forEach((item,index)=>{
-
-  const row = document.createElement("tr");
-
-  [item.name,item.date,item.status].forEach(value=>{
-   const cell = document.createElement("td");
-   cell.textContent = value;
-   row.appendChild(cell);
+document.getElementById("startAttendance").onclick = async () => {
+  try {
+    await loadModels();
+    if(!faceProfiles.length) throw new Error("No registered faces yet. Register a person first.");
+    await openCamera(document.getElementById("attendanceVideo"), "attendance");
+    document.getElementById("scanAttendance").disabled=false;
+    setStatus("scanMessage","Camera ready. Ask the registered person to face the camera.");
+  } catch(e) { setStatus("scanMessage",e.message,true); }
+};
+function findMatch(descriptor) {
+  let best=null, bestDistance=Infinity;
+  for(const profile of faceProfiles) {
+    const distance=faceapi.euclideanDistance(descriptor, new Float32Array(profile.descriptor));
+    if(distance<bestDistance){bestDistance=distance;best=profile;}
+  }
+  return best && bestDistance <= MATCH_THRESHOLD ? best : null;
+}
+function getPosition() {
+  return new Promise((resolve,reject)=>{
+    if(!navigator.geolocation) return reject(new Error("Geolocation is not supported by this browser."));
+    navigator.geolocation.getCurrentPosition(resolve, e=>reject(new Error(
+      e.code===1 ? "Location permission was denied." : "Unable to get location. Enable GPS/location and try again."
+    )), {enableHighAccuracy:true,timeout:15000,maximumAge:0});
   });
-
-  const action = document.createElement("td");
-  const button = document.createElement("button");
-
-  button.textContent = "Delete";
-  button.className = "delete";
-
-  button.onclick = function(){
-   if(confirm("Delete this record?")){
-    attendance.splice(index,1);
-    localStorage.setItem(
-     "y5hutRecords",JSON.stringify(attendance)
-    );
-    renderRecords();
-   }
-  };
-
-  action.appendChild(button);
-  row.appendChild(action);
-  table.appendChild(row);
- });
-
- document.getElementById("total").textContent=attendance.length;
- document.getElementById("present").textContent=
- attendance.filter(x=>x.status==="Present").length;
- document.getElementById("absent").textContent=
- attendance.filter(x=>x.status==="Absent").length;
 }
+document.getElementById("scanAttendance").onclick = async () => {
+  const button=document.getElementById("scanAttendance"); button.disabled=true;
+  try {
+    const descriptor=await getFaceDescriptor(document.getElementById("attendanceVideo"));
+    const match=findMatch(descriptor);
+    if(!match) throw new Error("Face not recognized. Attendance was not marked.");
+    const date=localDate();
+    if(attendance.some(x=>x.name.toLowerCase()===match.name.toLowerCase() && x.date===date))
+      throw new Error(`${match.name} already has an attendance record for today.`);
+    setStatus("scanMessage","Face matched. Getting current location…");
+    const position=await getPosition();
+    const now=new Date();
+    const record={
+      name:match.name,date,
+      time:now.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"}),
+      status:"Present",
+      latitude:position.coords.latitude,
+      longitude:position.coords.longitude,
+      accuracy:Math.round(position.coords.accuracy),
+      mapsUrl:`https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`,
+      method:"Face scan"
+    };
+    attendance.push(record);
+    if(saveStore("y5hutRecords",attendance)){
+      renderRecords(); setStatus("scanMessage",`Attendance marked for ${match.name} at ${record.time}.`);
+      stopCamera("attendance"); button.disabled=true;
+    } else attendance.pop();
+  } catch(e) { setStatus("scanMessage",e.message,true); }
+  finally { if(attendanceStream) button.disabled=false; }
+};
 
-function downloadCSV(){
-
- let csv = "Name,Date,Status\n";
-
- attendance.forEach(x=>{
-  csv += [x.name,x.date,x.status]
-   .map(v=>'"'+String(v).replace(/"/g,'""')+'"')
-   .join(",")+"\n";
- });
-
- const blob = new Blob(["\uFEFF"+csv],{
-  type:"text/csv;charset=utf-8;"
- });
-
- const url = URL.createObjectURL(blob);
- const a = document.createElement("a");
- a.href=url;
- a.download="Y5HUT_ATTENDANCE.csv";
- a.click();
- URL.revokeObjectURL(url);
+document.getElementById("saveManual").onclick=()=>{
+  const name=document.getElementById("person").value.trim();
+  const date=document.getElementById("date").value;
+  const status=document.getElementById("status").value;
+  if(!name||!date) return alert("Please enter a name and date.");
+  if(attendance.some(x=>x.name.toLowerCase()===name.toLowerCase()&&x.date===date))
+    return alert("Attendance already exists for this person on this date.");
+  attendance.push({name,date,time:new Date().toLocaleTimeString(),status,latitude:"",longitude:"",mapsUrl:"",method:"Manual"});
+  if(saveStore("y5hutRecords",attendance)){
+    document.getElementById("person").value=""; document.getElementById("date").value=localDate();
+    setStatus("message","Attendance saved successfully."); renderRecords();
+  } else attendance.pop();
+};
+function renderPeople(){
+  const list=document.getElementById("registeredPeople"); list.innerHTML="";
+  faceProfiles.forEach((p,i)=>{
+    const li=document.createElement("li"); li.textContent=p.name+" ";
+    const btn=document.createElement("button"); btn.textContent="Remove"; btn.className="danger";
+    btn.style.width="auto"; btn.style.padding="5px 10px";
+    btn.onclick=()=>{if(confirm(`Remove face registration for ${p.name}?`)){faceProfiles.splice(i,1);saveStore("y5hutFaceProfiles",faceProfiles);renderPeople();}};
+    li.appendChild(btn); list.appendChild(li);
+  });
 }
-
-renderRecords();
+function renderRecords(){
+  const table=document.getElementById("records"); table.innerHTML="";
+  attendance.forEach((item,index)=>{
+    const row=document.createElement("tr");
+    [item.name,item.date,item.time||"",item.status].forEach(value=>{
+      const cell=document.createElement("td"); cell.textContent=value||""; row.appendChild(cell);
+    });
+    const location=document.createElement("td");
+    if(item.mapsUrl){const a=document.createElement("a");a.href=item.mapsUrl;a.target="_blank";a.rel="noopener";a.textContent="View map";location.appendChild(a);}
+    else location.textContent="Not captured";
+    row.appendChild(location);
+    const action=document.createElement("td");const btn=document.createElement("button");
+    btn.textContent="Delete";btn.className="danger";btn.onclick=()=>{
+      if(confirm("Delete this attendance record?")){attendance.splice(index,1);if(saveStore("y5hutRecords",attendance))renderRecords();}
+    };
+    action.appendChild(btn);row.appendChild(action);table.appendChild(row);
+  });
+  document.getElementById("total").textContent=attendance.length;
+  document.getElementById("present").textContent=attendance.filter(x=>x.status==="Present").length;
+  document.getElementById("absent").textContent=attendance.filter(x=>x.status==="Absent").length;
+}
+document.getElementById("download").onclick=()=>{
+  const columns=["Name","Date","Time","Status","Latitude","Longitude","Location URL","Accuracy (m)","Method"];
+  const rows=attendance.map(x=>[x.name,x.date,x.time||"",x.status,x.latitude??"",x.longitude??"",x.mapsUrl||"",x.accuracy??"",x.method||""]);
+  const csv=[columns,...rows].map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);const a=document.createElement("a");
+  a.href=url;a.download="Y5HUT_ATTENDANCE.csv";a.click();URL.revokeObjectURL(url);
+};
+renderPeople();renderRecords();
 </script>
 </body>
 </html>
