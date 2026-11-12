@@ -62,7 +62,7 @@ th{background:#eaf2ff}.person-list{padding-left:20px}.employee-grid{display:grid
 <button id="saveManual">SAVE ATTENDANCE</button><p id="message" class="status"></p></div>
 
 <div class="box"><h2>Attendance Records</h2><button id="download">DOWNLOAD CSV</button><div class="scroll"><table>
-<thead><tr><th>Employee ID</th><th>Name</th><th>Date</th><th>Time</th><th>Status</th><th>Location</th><th>Method</th><th>Action</th></tr></thead>
+<thead><tr><th>Employee ID</th><th>Name</th><th>Date</th><th>Time</th><th>Status</th><th>Reason</th><th>Location</th><th>Method</th><th>Action</th></tr></thead>
 <tbody id="records"></tbody></table></div></div>
 <p class="note"><strong>Important:</strong> Attendance records are stored in Firebase and shared across signed-in devices. Face templates remain local to each browser. Keep Firestore rules restricted to the admin account and provide a non-biometric attendance alternative.</p>
 </div></div>
@@ -285,10 +285,45 @@ document.getElementById("saveManual").onclick=async()=>{
 };
 function renderPeople(){const list=document.getElementById("registeredPeople");list.innerHTML="";faceProfiles.forEach((p,i)=>{const li=document.createElement("li");li.textContent=(p.employeeId?p.employeeId+" — ":"")+p.name+" ";const btn=document.createElement("button");btn.textContent="Remove";btn.className="danger";btn.style.width="auto";btn.style.padding="5px 10px";btn.onclick=()=>{if(confirm("Remove face registration for "+p.name+"?")){faceProfiles.splice(i,1);saveFaceStore();renderPeople()}};li.append(btn);list.append(li)})}
 function renderRecords(){const table=document.getElementById("records");if(!table)return;table.innerHTML="";
- attendance.forEach(item=>{const r=document.createElement("tr");[item.employeeId||"—",item.name,item.date,item.time||"",item.status].forEach(v=>{const c=document.createElement("td");c.textContent=v||"";r.append(c)});
+ attendance.forEach(item=>{const r=document.createElement("tr");[item.employeeId||"—",item.name,item.date,item.time||"",item.status,item.reason||"—"].forEach(v=>{const c=document.createElement("td");c.textContent=v||"";r.append(c)});
  const loc=document.createElement("td");if(item.mapsUrl){const a=document.createElement("a");a.href=item.mapsUrl;a.target="_blank";a.rel="noopener";a.textContent="View map";loc.append(a)}else loc.textContent="Not captured";r.append(loc);
  const method=document.createElement("td");method.textContent=item.method||"";r.append(method);
  const action=document.createElement("td"),btn=document.createElement("button");btn.textContent="Delete";btn.className="danger";btn.onclick=async()=>{if(confirm("Delete this attendance record?"))try{await deleteDoc(doc(db,"attendance",item.id))}catch(e){setStatus("message",friendlyError(e),true)}};action.append(btn);r.append(action);table.append(r)});
  document.getElementById("total").textContent=attendance.length;document.getElementById("present").textContent=attendance.filter(x=>x.status==="Present").length;document.getElementById("absent").textContent=attendance.filter(x=>x.status==="Absent").length}
-document.getElementById("download").onclick=()=>{const cols=["Employee ID","Name","Date","Time","Status","Latitude","Longitude","Location URL","Accuracy (m)","Method"];const rows=attendance.map(x=>[x.employeeId||"",x.name,x.date,x.time||"",x.status,x.latitude??"",x.longitude??"",x.mapsUrl||"",x.accuracy??"",x.method||""]);const csv=[cols,...rows].map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="Y5HUT_ATTENDANCE.csv";a.click();URL.revokeObjectURL(url)};
+document.getElementById("download").onclick=()=>{
+  const cols=[
+    "Employee ID","Name","Date","Time","Status",
+    "Reason","Latitude","Longitude","Location URL",
+    "Accuracy (m)","Method"
+  ];
+
+  const rows=attendance.map(x=>[
+    x.employeeId||"",
+    x.name,
+    x.date,
+    x.time||"",
+    x.status,
+    x.reason||"",
+    x.latitude??"",
+    x.longitude??"",
+    x.mapsUrl||"",
+    x.accuracy??"",
+    x.method||""
+  ]);
+
+  const csv=[cols,...rows]
+    .map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(","))
+    .join("\r\n");
+
+  const blob=new Blob(["\uFEFF"+csv],{
+    type:"text/csv;charset=utf-8;"
+  });
+
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="Y5HUT_ATTENDANCE.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+};const cols=["Employee ID","Name","Date","Time","Status","Reason","Latitude","Longitude","Location URL","Accuracy (m)","Method"];const rows=attendance.map(x=>[x.employeeId||"",x.name,x.date,x.time||"",x.status,x.latitude??"",x.longitude??"",x.mapsUrl||"",x.accuracy??"",x.method||""]);const csv=[cols,...rows].map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="Y5HUT_ATTENDANCE.csv";a.click();URL.revokeObjectURL(url)};
 </script></body></html>
