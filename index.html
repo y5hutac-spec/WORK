@@ -1,507 +1,169 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Y5HUT ATTENDANCE</title>
 <style>
 :root{--blue:#123c78;--action:#1763bd;--bg:#f1f5f9;--ink:#172554}
-*{box-sizing:border-box}
-body{font-family:Arial,sans-serif;background:var(--bg);margin:0;color:var(--ink)}
-header{background:var(--blue);color:#fff;text-align:center;padding:25px}
-.container{max-width:960px;margin:25px auto;padding:15px}
+*{box-sizing:border-box}body{font-family:Arial,sans-serif;background:var(--bg);margin:0;color:var(--ink)}
+header{background:var(--blue);color:#fff;text-align:center;padding:25px}.container{max-width:1050px;margin:25px auto;padding:15px}
 .box{background:#fff;padding:20px;border-radius:12px;margin-bottom:20px;box-shadow:0 2px 8px #0000000a}
 input,select,button{width:100%;padding:12px;margin:8px 0;border:1px solid #ccc;border-radius:7px;font-size:15px}
-button{background:var(--action);color:#fff;border:0;font-weight:bold;cursor:pointer}
-button:disabled{opacity:.55;cursor:not-allowed}
-button.secondary{background:#475569}
-button.danger{background:#dc2626}
-.stats{display:flex;gap:10px}
+button{background:var(--action);color:#fff;border:0;font-weight:bold;cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}
+button.secondary{background:#475569}button.danger{background:#dc2626}.stats{display:flex;gap:10px}
 .stats div{flex:1;background:#fff;padding:15px;text-align:center;border-radius:10px}
 video{width:100%;max-height:360px;background:#0f172a;border-radius:10px;display:block}
-.note{font-size:13px;line-height:1.5;color:#475569}
-.status{min-height:22px;font-size:14px;font-weight:bold}
-.scroll{overflow-x:auto}
-table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left;white-space:nowrap}
-th{background:#eaf2ff}
-.person-list{padding-left:20px}
-.employee-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.employee-grid label{display:block;font-weight:bold;font-size:14px}
-.employee-actions{display:flex;gap:6px}.employee-actions button{width:auto;padding:7px 10px}
-@media(max-width:650px){.employee-grid{display:block}}
-.topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-.topbar button{width:auto;padding:10px 18px}
-#appShell[hidden],#loginBox[hidden]{display:none}
-@media(max-width:650px){.stats{display:block}.stats div{margin-bottom:8px}}
-</style>
-</head>
-<body>
+.note{font-size:13px;line-height:1.5;color:#475569}.status{min-height:22px;font-size:14px;font-weight:bold}
+.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left;white-space:nowrap}
+th{background:#eaf2ff}.person-list{padding-left:20px}.employee-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.employee-grid label{display:block;font-weight:bold;font-size:14px}.employee-actions{display:flex;gap:6px}.employee-actions button{width:auto;padding:7px 10px}
+.topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}.topbar button{width:auto;padding:10px 18px}
+#appShell[hidden],#loginBox[hidden]{display:none}@media(max-width:650px){.employee-grid{display:block}.stats{display:block}.stats div{margin-bottom:8px}}
+</style></head><body>
 <header><h1>Y5HUT ATTENDANCE</h1><p>Attendance Management System</p></header>
 <div class="container">
-  <div class="box" id="loginBox">
-    <h2>Admin Login</h2>
-    <p class="note">Sign in using the administrator account created in Firebase Authentication.</p>
-    <label for="adminEmail">Admin Email</label>
-    <input id="adminEmail" type="email" autocomplete="username" placeholder="Admin email">
-    <label for="adminPassword">Password</label>
-    <input id="adminPassword" type="password" autocomplete="current-password" placeholder="Password">
-    <button id="loginButton">LOGIN</button>
-    <p id="loginMessage" class="status" aria-live="polite"></p>
-  </div>
+<div class="box" id="loginBox"><h2>Admin Login</h2><p class="note">Sign in using the administrator account created in Firebase Authentication.</p>
+<label>Admin Email</label><input id="adminEmail" type="email" autocomplete="username" placeholder="Admin email">
+<label>Password</label><input id="adminPassword" type="password" autocomplete="current-password" placeholder="Password">
+<button id="loginButton">LOGIN</button><p id="loginMessage" class="status" aria-live="polite"></p></div>
+<div id="appShell" hidden>
+<div class="box topbar"><div><strong id="signedInAs"></strong><p class="note">Cloud attendance is synchronized through Firebase.</p></div><button id="logoutButton" class="secondary">LOG OUT</button></div>
+<div class="stats"><div>Total Records<h2 id="total">0</h2></div><div>Present<h2 id="present">0</h2></div><div>Absent<h2 id="absent">0</h2></div></div>
 
-  <div id="appShell" hidden>
-    <div class="box topbar">
-      <div><strong id="signedInAs"></strong><p class="note">Cloud attendance is synchronized through Firebase.</p></div>
-      <button id="logoutButton" class="secondary">LOG OUT</button>
-    </div>
+<div class="box"><h2>Employee Management</h2><p class="note">Employee records are stored in Firebase.</p>
+<div class="employee-grid">
+<div><label>Employee ID</label><input id="employeeId" readonly placeholder="Auto-generated"></div>
+<div><label>Full Name *</label><input id="employeeName" placeholder="Employee full name"></div>
+<div><label>Department</label><input id="employeeDepartment" placeholder="Department"></div>
+<div><label>Designation</label><input id="employeeDesignation" placeholder="Job title"></div>
+<div><label>Mobile Number</label><input id="employeePhone" type="tel" placeholder="Mobile number (optional)"></div></div>
+<button id="saveEmployee">ADD EMPLOYEE</button><button id="cancelEmployeeEdit" class="secondary" hidden>CANCEL EDIT</button>
+<p id="employeeMessage" class="status" aria-live="polite"></p><h3>Employee List</h3><div class="scroll"><table>
+<thead><tr><th>Employee ID</th><th>Name</th><th>Department</th><th>Designation</th><th>Mobile</th><th>Actions</th></tr></thead><tbody id="employeeRows"></tbody></table></div></div>
 
-    <div class="stats">
-      <div>Total Records<h2 id="total">0</h2></div>
-      <div>Present<h2 id="present">0</h2></div>
-      <div>Absent<h2 id="absent">0</h2></div>
-    </div>
+<div class="box"><h2>Face Registration</h2><p class="note">Choose an employee before registering. Face templates stay in this browser only and are not uploaded to Firebase. Register each person on every scanning device. Obtain informed consent and offer a non-biometric alternative.</p>
+<label for="registerEmployee">Select Employee</label><select id="registerEmployee"><option value="">-- Select employee --</option></select>
+<button id="startRegister">OPEN CAMERA FOR REGISTRATION</button><video id="registerVideo" autoplay muted playsinline hidden></video>
+<button id="saveFace" disabled>SCAN & REGISTER FACE</button><p id="registerMessage" class="status" aria-live="polite"></p>
+<h3>Registered People (this device)</h3><ul id="registeredPeople" class="person-list"></ul></div>
 
+<div class="box"><h2>Face Scan Attendance</h2><p class="note">Matched employee ID, name, date, time and GPS location are saved in Firebase.</p>
+<button id="startAttendance">START FACE SCAN</button><video id="attendanceVideo" autoplay muted playsinline hidden></video>
+<button id="scanAttendance" disabled>VERIFY FACE & MARK ATTENDANCE</button><p id="scanMessage" class="status" aria-live="polite"></p></div>
 
-    <div class="box">
-      <h2>Employee Management</h2>
-      <p class="note">Add and manage Y5HUT company employees. Employee records are stored in the Firebase employees collection.</p>
-      <div class="employee-grid">
-        <div><label for="employeeId">Employee ID</label><input id="employeeId" readonly placeholder="Auto-generated"></div>
-        <div><label for="employeeName">Full Name *</label><input id="employeeName" placeholder="Employee full name"></div>
-        <div><label for="employeeDepartment">Department</label><input id="employeeDepartment" placeholder="Department"></div>
-        <div><label for="employeeDesignation">Designation</label><input id="employeeDesignation" placeholder="Job title"></div>
-        <div><label for="employeePhone">Mobile Number</label><input id="employeePhone" type="tel" placeholder="Mobile number (optional)"></div>
-      </div>
-      <button id="saveEmployee">ADD EMPLOYEE</button>
-      <button id="cancelEmployeeEdit" class="secondary" hidden>CANCEL EDIT</button>
-      <p id="employeeMessage" class="status" aria-live="polite"></p>
-      <h3>Employee List</h3>
-      <div class="scroll">
-        <table>
-          <thead><tr><th>Employee ID</th><th>Name</th><th>Department</th><th>Designation</th><th>Mobile</th><th>Actions</th></tr></thead>
-          <tbody id="employeeRows"></tbody>
-        </table>
-      </div>
-    </div>
+<div class="box"><h2>Manual Attendance</h2><label for="manualEmployee">Select Employee</label><select id="manualEmployee"><option value="">-- Select employee --</option></select>
+<label for="date">Date</label><input id="date" type="date"><label for="status">Status</label>
+<select id="status"><option>Present</option><option>Absent</option><option>Late</option></select>
+<button id="saveManual">SAVE ATTENDANCE</button><p id="message" class="status"></p></div>
 
-    <div class="box">
-      <h2>Face Registration</h2>
-      <p class="note">Face templates stay in this browser only and are not uploaded to Firebase. Register each person on every device that will perform face scanning. Obtain informed consent before using face recognition.</p>
-      <label for="registerName">Student / Employee Name</label>
-      <input id="registerName" type="text" placeholder="Enter full name">
-      <button id="startRegister">OPEN CAMERA FOR REGISTRATION</button>
-      <video id="registerVideo" autoplay muted playsinline hidden></video>
-      <button id="saveFace" disabled>SCAN & REGISTER FACE</button>
-      <p id="registerMessage" class="status" aria-live="polite"></p>
-      <h3>Registered People (this device)</h3>
-      <ul id="registeredPeople" class="person-list"></ul>
-    </div>
-
-    <div class="box">
-      <h2>Face Scan Attendance</h2>
-      <p class="note">Attendance is written to the shared Firebase database after a registered face is matched and GPS location is obtained.</p>
-      <button id="startAttendance">START FACE SCAN</button>
-      <video id="attendanceVideo" autoplay muted playsinline hidden></video>
-      <button id="scanAttendance" disabled>VERIFY FACE & MARK ATTENDANCE</button>
-      <p id="scanMessage" class="status" aria-live="polite"></p>
-    </div>
-
-    <div class="box">
-      <h2>Manual Attendance</h2>
-      <label for="person">Student / Employee Name</label>
-      <input id="person" type="text" placeholder="Enter Name">
-      <label for="date">Date</label>
-      <input id="date" type="date">
-      <label for="status">Status</label>
-      <select id="status"><option>Present</option><option>Absent</option><option>Late</option></select>
-      <button id="saveManual">SAVE ATTENDANCE</button>
-      <p id="message" class="status"></p>
-    </div>
-
-    <div class="box">
-      <h2>Attendance Records</h2>
-      <button id="download">DOWNLOAD CSV</button>
-      <div class="scroll">
-        <table>
-          <thead><tr><th>Name</th><th>Date</th><th>Time</th><th>Status</th><th>Location</th><th>Action</th></tr></thead>
-          <tbody id="records"></tbody>
-        </table>
-      </div>
-    </div>
-    <p class="note"><strong>Important:</strong> Attendance records are stored in Firebase and shared across signed-in devices. Face templates remain local to each browser. Use strong passwords, keep Firestore rules restricted to the admin account, and provide a non-biometric attendance alternative.</p>
-  </div>
-</div>
+<div class="box"><h2>Attendance Records</h2><button id="download">DOWNLOAD CSV</button><div class="scroll"><table>
+<thead><tr><th>Employee ID</th><th>Name</th><th>Date</th><th>Time</th><th>Status</th><th>Location</th><th>Method</th><th>Action</th></tr></thead>
+<tbody id="records"></tbody></table></div></div>
+<p class="note"><strong>Important:</strong> Attendance records are stored in Firebase and shared across signed-in devices. Face templates remain local to each browser. Keep Firestore rules restricted to the admin account and provide a non-biometric attendance alternative.</p>
+</div></div>
 
 <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
+import {initializeApp} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
+import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
+import {getFirestore,collection,addDoc,deleteDoc,doc,onSnapshot,query,orderBy,serverTimestamp,getDocs,updateDoc} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBLNSMhtG3P8k39_2tzmU3xe8oyGHYMfIY",
-  authDomain: "y5hut-attantance.firebaseapp.com",
-  projectId: "y5hut-attantance",
-  storageBucket: "y5hut-attantance.firebasestorage.app",
-  messagingSenderId: "418990506329",
-  appId: "1:418990506329:web:bf96f2ee5326767c51cc48",
-  measurementId: "G-WF2HBKYCGS"
+const firebaseConfig={
+ apiKey:"AIzaSyBLNSMhtG3P8k39_2tzmU3xe8oyGHYMfIY",authDomain:"y5hut-attantance.firebaseapp.com",
+ projectId:"y5hut-attantance",storageBucket:"y5hut-attantance.firebasestorage.app",
+ messagingSenderId:"418990506329",appId:"1:418990506329:web:bf96f2ee5326767c51cc48",measurementId:"G-WF2HBKYCGS"
 };
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+const attendanceRef=collection(db,"attendance"),employeesRef=collection(db,"employees");
+const MODEL_URL="https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights",MATCH_THRESHOLD=.50;
+let modelsReady=false,registerStream=null,attendanceStream=null,attendance=[],employees=[];
+let faceProfiles=readStore("y5hutFaceProfiles",[]),unsubscribeAttendance=null,unsubscribeEmployees=null,editingEmployeeId=null;
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const attendanceRef = collection(db, "attendance");
-const employeesRef = collection(db, "employees");
+function readStore(k,f){try{return JSON.parse(localStorage.getItem(k)||"null")??f}catch(_){return f}}
+function saveFaceStore(){try{localStorage.setItem("y5hutFaceProfiles",JSON.stringify(faceProfiles));return true}catch(_){alert("Browser storage unavailable. Face registration not saved.");return false}}
+function localDate(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
+function setStatus(id,msg,error=false){const e=document.getElementById(id);if(e){e.textContent=msg;e.style.color=error?"#b91c1c":"#166534"}}
+document.getElementById("date").value=localDate();prepareEmployeeId();
+function friendlyError(e){const c=e?.code||"";if(c.includes("auth/invalid-credential")||c.includes("auth/wrong-password")||c.includes("auth/user-not-found"))return"Email or password is incorrect.";if(c.includes("auth/too-many-requests"))return"Too many attempts. Wait and try again.";if(c.includes("permission-denied"))return"Firebase denied access. Check published Firestore Rules and admin email.";if(c.includes("unavailable"))return"Firebase unavailable. Check internet.";return e?.message||"Unexpected error."}
 
-const MODEL_URL = "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights";
-const MATCH_THRESHOLD = 0.50;
-let modelsReady = false;
-let registerStream = null;
-let attendanceStream = null;
-let attendance = [];
-let faceProfiles = readStore("y5hutFaceProfiles", []);
-let unsubscribeAttendance = null;
-let unsubscribeEmployees = null;
-let employees = [];
-let editingEmployeeId = null;
-
-function readStore(key, fallback) {
-  try { const value = JSON.parse(localStorage.getItem(key) || "null"); return value ?? fallback; }
-  catch (_) { return fallback; }
-}
-function saveFaceStore() {
-  try { localStorage.setItem("y5hutFaceProfiles", JSON.stringify(faceProfiles)); return true; }
-  catch (_) { alert("Browser storage is full or unavailable. Face registration was not saved."); return false; }
-}
-function localDate() {
-  const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0,10);
-}
-function setStatus(id, message, error=false) {
-  const el=document.getElementById(id);
-  if (el) { el.textContent=message; el.style.color=error?"#b91c1c":"#166534"; }
-}
-document.getElementById("date").value = localDate();
-prepareEmployeeId();
-
-function friendlyError(error) {
-  const code = error?.code || "";
-  if (code.includes("auth/invalid-credential") || code.includes("auth/wrong-password") || code.includes("auth/user-not-found")) return "Email or password is incorrect.";
-  if (code.includes("auth/too-many-requests")) return "Too many attempts. Please wait and try again.";
-  if (code.includes("permission-denied")) return "Firebase denied access. Check that Firestore Rules are published and the signed-in email matches the Admin email in the rules.";
-  if (code.includes("unavailable")) return "Firebase is temporarily unavailable. Check your internet connection and try again.";
-  return error?.message || "An unexpected error occurred.";
-}
-
-document.getElementById("loginButton").onclick = async () => {
-  const email=document.getElementById("adminEmail").value.trim();
-  const password=document.getElementById("adminPassword").value;
-  if(!email || !password) return setStatus("loginMessage","Enter your admin email and password.",true);
-  document.getElementById("loginButton").disabled=true;
-  setStatus("loginMessage","Signing in…");
-  try {
-    await signInWithEmailAndPassword(auth,email,password);
-    document.getElementById("adminPassword").value="";
-    setStatus("loginMessage","");
-  } catch(e) { setStatus("loginMessage",friendlyError(e),true); }
-  finally { document.getElementById("loginButton").disabled=false; }
+document.getElementById("loginButton").onclick=async()=>{
+ const email=document.getElementById("adminEmail").value.trim(),password=document.getElementById("adminPassword").value;
+ if(!email||!password)return setStatus("loginMessage","Enter admin email and password.",true);
+ const b=document.getElementById("loginButton");b.disabled=true;setStatus("loginMessage","Signing in…");
+ try{await signInWithEmailAndPassword(auth,email,password);document.getElementById("adminPassword").value="";setStatus("loginMessage","")}
+ catch(e){setStatus("loginMessage",friendlyError(e),true)}finally{b.disabled=false}
 };
-document.getElementById("logoutButton").onclick = async () => {
-  stopCamera("register"); stopCamera("attendance");
-  if(unsubscribeAttendance){unsubscribeAttendance();unsubscribeAttendance=null;}
-  await signOut(auth);
-};
-
-onAuthStateChanged(auth, user => {
-  const loginBox=document.getElementById("loginBox");
-  const appShell=document.getElementById("appShell");
-  if(user){
-    loginBox.hidden=true; appShell.hidden=false;
-    document.getElementById("signedInAs").textContent="Signed in: "+(user.email || "Admin");
-    listenForAttendance();
-    listenForEmployees();
-    renderPeople();
-  } else {
-    appShell.hidden=true; loginBox.hidden=false;
-    attendance=[];
-    renderRecords();
-    if(unsubscribeAttendance){unsubscribeAttendance();unsubscribeAttendance=null;}
-    if(unsubscribeEmployees){unsubscribeEmployees();unsubscribeEmployees=null;}
-  }
+document.getElementById("logoutButton").onclick=async()=>{stopCamera("register");stopCamera("attendance");await signOut(auth)};
+onAuthStateChanged(auth,user=>{
+ const shell=document.getElementById("appShell"),login=document.getElementById("loginBox");
+ if(user){login.hidden=true;shell.hidden=false;document.getElementById("signedInAs").textContent="Signed in: "+(user.email||"Admin");listenForAttendance();listenForEmployees();renderPeople()}
+ else{shell.hidden=true;login.hidden=false;attendance=[];employees=[];renderRecords();if(unsubscribeAttendance){unsubscribeAttendance();unsubscribeAttendance=null}if(unsubscribeEmployees){unsubscribeEmployees();unsubscribeEmployees=null}}
 });
-
-function listenForAttendance(){
-  if(unsubscribeAttendance) unsubscribeAttendance();
-  const q=query(attendanceRef,orderBy("date","desc"));
-  unsubscribeAttendance=onSnapshot(q,snapshot=>{
-    attendance=snapshot.docs.map(d=>({id:d.id,...d.data()}));
-    renderRecords();
-  },error=>setStatus("message",friendlyError(error),true));
+function listenForAttendance(){if(unsubscribeAttendance)unsubscribeAttendance();unsubscribeAttendance=onSnapshot(query(attendanceRef,orderBy("date","desc")),s=>{attendance=s.docs.map(d=>({id:d.id,...d.data()}));renderRecords()},e=>setStatus("message",friendlyError(e),true))}
+function listenForEmployees(){if(unsubscribeEmployees)unsubscribeEmployees();unsubscribeEmployees=onSnapshot(employeesRef,s=>{employees=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.employeeId||"").localeCompare(b.employeeId||""));renderEmployees();populateEmployeeSelects();prepareEmployeeId()},e=>setStatus("employeeMessage",friendlyError(e),true))}
+async function nextEmployeeId(){const s=await getDocs(employeesRef);let max=0;s.forEach(d=>{const m=String(d.data().employeeId||"").match(/^Y5HUT(\\d+)$/i);if(m)max=Math.max(max,+m[1])});return"Y5HUT"+String(max+1).padStart(3,"0")}
+async function prepareEmployeeId(){if(editingEmployeeId)return;try{document.getElementById("employeeId").value=await nextEmployeeId()}catch(e){setStatus("employeeMessage",friendlyError(e),true)}}
+function populateEmployeeSelects(){
+ ["registerEmployee","manualEmployee"].forEach(id=>{const el=document.getElementById(id),old=el.value;el.innerHTML='<option value="">-- Select employee --</option>';employees.forEach(emp=>{const o=document.createElement("option");o.value=emp.id;o.textContent=(emp.employeeId||"ID missing")+" — "+emp.name;el.appendChild(o)});if(employees.some(e=>e.id===old))el.value=old})
 }
-
-
-function listenForEmployees(){
-  if(unsubscribeEmployees) unsubscribeEmployees();
-  unsubscribeEmployees=onSnapshot(employeesRef,snapshot=>{
-    employees=snapshot.docs.map(d=>({id:d.id,...d.data()}))
-      .sort((a,b)=>(a.employeeId||"").localeCompare(b.employeeId||""));
-    renderEmployees();
-  },error=>setStatus("employeeMessage",friendlyError(error),true));
-}
-async function nextEmployeeId(){
-  const snap=await getDocs(employeesRef);
-  let max=0;
-  snap.forEach(d=>{
-    const match=String(d.data().employeeId||"").match(/^Y5HUT(\d+)$/i);
-    if(match) max=Math.max(max,Number(match[1]));
-  });
-  return "Y5HUT"+String(max+1).padStart(3,"0");
-}
-function resetEmployeeForm(){
-  editingEmployeeId=null;
-  document.getElementById("employeeId").value="";
-  document.getElementById("employeeName").value="";
-  document.getElementById("employeeDepartment").value="";
-  document.getElementById("employeeDesignation").value="";
-  document.getElementById("employeePhone").value="";
-  document.getElementById("saveEmployee").textContent="ADD EMPLOYEE";
-  document.getElementById("cancelEmployeeEdit").hidden=true;
-  prepareEmployeeId();
-}
-async function prepareEmployeeId(){
-  if(editingEmployeeId) return;
-  try{document.getElementById("employeeId").value=await nextEmployeeId();}
-  catch(e){setStatus("employeeMessage",friendlyError(e),true);}
-}
+function resetEmployeeForm(){editingEmployeeId=null;["employeeName","employeeDepartment","employeeDesignation","employeePhone"].forEach(id=>document.getElementById(id).value="");document.getElementById("saveEmployee").textContent="ADD EMPLOYEE";document.getElementById("cancelEmployeeEdit").hidden=true;prepareEmployeeId()}
 function renderEmployees(){
-  const body=document.getElementById("employeeRows");
-  if(!body) return;
-  body.innerHTML="";
-  employees.forEach(emp=>{
-    const row=document.createElement("tr");
-    [emp.employeeId,emp.name,emp.department||"",emp.designation||"",emp.phone||""].forEach(value=>{
-      const cell=document.createElement("td");cell.textContent=value||"";row.appendChild(cell);
-    });
-    const actions=document.createElement("td");
-    const wrap=document.createElement("div");wrap.className="employee-actions";
-    const edit=document.createElement("button");edit.textContent="Edit";edit.className="secondary";
-    edit.onclick=()=>{
-      editingEmployeeId=emp.id;
-      document.getElementById("employeeId").value=emp.employeeId||"";
-      document.getElementById("employeeName").value=emp.name||"";
-      document.getElementById("employeeDepartment").value=emp.department||"";
-      document.getElementById("employeeDesignation").value=emp.designation||"";
-      document.getElementById("employeePhone").value=emp.phone||"";
-      document.getElementById("saveEmployee").textContent="UPDATE EMPLOYEE";
-      document.getElementById("cancelEmployeeEdit").hidden=false;
-      setStatus("employeeMessage","Editing "+(emp.employeeId||emp.name));
-      document.getElementById("employeeName").focus();
-    };
-    const del=document.createElement("button");del.textContent="Delete";del.className="danger";
-    del.onclick=async()=>{
-      if(!confirm("Delete employee "+(emp.name||"")+"?")) return;
-      try{await deleteDoc(doc(db,"employees",emp.id));setStatus("employeeMessage","Employee deleted.");}
-      catch(e){setStatus("employeeMessage",friendlyError(e),true);}
-    };
-    wrap.append(edit,del);actions.appendChild(wrap);row.appendChild(actions);body.appendChild(row);
-  });
+ const body=document.getElementById("employeeRows");body.innerHTML="";
+ employees.forEach(emp=>{const r=document.createElement("tr");[emp.employeeId,emp.name,emp.department||"",emp.designation||"",emp.phone||""].forEach(v=>{const c=document.createElement("td");c.textContent=v||"";r.appendChild(c)});
+ const c=document.createElement("td"),w=document.createElement("div");w.className="employee-actions";
+ const edit=document.createElement("button");edit.textContent="Edit";edit.className="secondary";edit.onclick=()=>{editingEmployeeId=emp.id;document.getElementById("employeeId").value=emp.employeeId||"";document.getElementById("employeeName").value=emp.name||"";document.getElementById("employeeDepartment").value=emp.department||"";document.getElementById("employeeDesignation").value=emp.designation||"";document.getElementById("employeePhone").value=emp.phone||"";document.getElementById("saveEmployee").textContent="UPDATE EMPLOYEE";document.getElementById("cancelEmployeeEdit").hidden=false};
+ const del=document.createElement("button");del.textContent="Delete";del.className="danger";del.onclick=async()=>{if(confirm("Delete employee "+emp.name+"?"))try{await deleteDoc(doc(db,"employees",emp.id));setStatus("employeeMessage","Employee deleted.")}catch(e){setStatus("employeeMessage",friendlyError(e),true)}};
+ w.append(edit,del);c.append(w);r.append(c);body.append(r)})
 }
 document.getElementById("saveEmployee").onclick=async()=>{
-  const name=document.getElementById("employeeName").value.trim();
-  if(!name) return setStatus("employeeMessage","Enter employee name.",true);
-  const data={
-    name,
-    department:document.getElementById("employeeDepartment").value.trim(),
-    designation:document.getElementById("employeeDesignation").value.trim(),
-    phone:document.getElementById("employeePhone").value.trim(),
-    updatedAt:serverTimestamp()
-  };
-  const button=document.getElementById("saveEmployee");button.disabled=true;
-  try{
-    if(editingEmployeeId){
-      await updateDoc(doc(db,"employees",editingEmployeeId),data);
-      setStatus("employeeMessage","Employee updated successfully.");
-    }else{
-      data.employeeId=await nextEmployeeId();
-      data.createdAt=serverTimestamp();
-      await addDoc(employeesRef,data);
-      setStatus("employeeMessage","Employee added: "+data.employeeId);
-    }
-    resetEmployeeForm();
-  }catch(e){setStatus("employeeMessage",friendlyError(e),true);}
-  finally{button.disabled=false;}
+ const name=document.getElementById("employeeName").value.trim();if(!name)return setStatus("employeeMessage","Enter employee name.",true);
+ const data={name,department:document.getElementById("employeeDepartment").value.trim(),designation:document.getElementById("employeeDesignation").value.trim(),phone:document.getElementById("employeePhone").value.trim(),updatedAt:serverTimestamp()};
+ const b=document.getElementById("saveEmployee");b.disabled=true;
+ try{if(editingEmployeeId){await updateDoc(doc(db,"employees",editingEmployeeId),data);setStatus("employeeMessage","Employee updated.")}else{data.employeeId=await nextEmployeeId();data.createdAt=serverTimestamp();await addDoc(employeesRef,data);setStatus("employeeMessage","Employee added: "+data.employeeId)}resetEmployeeForm()}
+ catch(e){setStatus("employeeMessage",friendlyError(e),true)}finally{b.disabled=false}
 };
-document.getElementById("cancelEmployeeEdit").onclick=()=>{resetEmployeeForm();setStatus("employeeMessage","Edit cancelled.");};
+document.getElementById("cancelEmployeeEdit").onclick=()=>{resetEmployeeForm();setStatus("employeeMessage","Edit cancelled.")};
 
-async function loadModels() {
-  if (modelsReady) return;
-  setStatus("registerMessage", "Loading face recognition models…");
-  await Promise.all([
-    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-  ]);
-  modelsReady = true;
-}
-async function openCamera(video, mode) {
-  if (!navigator.mediaDevices?.getUserMedia) throw new Error("Camera access requires HTTPS and a supported browser.");
-  const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false});
-  video.srcObject = stream; video.hidden = false; await video.play();
-  if (mode === "register") registerStream = stream; else attendanceStream = stream;
-}
-function stopCamera(mode) {
-  const stream = mode === "register" ? registerStream : attendanceStream;
-  if (stream) stream.getTracks().forEach(t => t.stop());
-  if (mode === "register") { registerStream=null; document.getElementById("registerVideo").hidden=true; }
-  else { attendanceStream=null; document.getElementById("attendanceVideo").hidden=true; }
-}
-async function getFaceDescriptor(video) {
-  const result = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({inputSize:320,scoreThreshold:0.5}))
-    .withFaceLandmarks().withFaceDescriptor();
-  if (!result) throw new Error("No clear face detected. Face the camera with good lighting and try again.");
-  return Array.from(result.descriptor);
-}
-
-document.getElementById("startRegister").onclick = async () => {
-  try {
-    await loadModels();
-    await openCamera(document.getElementById("registerVideo"), "register");
-    document.getElementById("saveFace").disabled=false;
-    setStatus("registerMessage","Camera ready. Look directly at the camera, then scan.");
-  } catch(e) { setStatus("registerMessage",friendlyError(e),true); }
+async function loadModels(){if(modelsReady)return;setStatus("registerMessage","Loading face recognition models…");await Promise.all([faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)]);modelsReady=true}
+async function openCamera(video,mode){if(!navigator.mediaDevices?.getUserMedia)throw Error("Camera needs HTTPS and a supported browser.");const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false});video.srcObject=s;video.hidden=false;await video.play();if(mode==="register")registerStream=s;else attendanceStream=s}
+function stopCamera(mode){const s=mode==="register"?registerStream:attendanceStream;if(s)s.getTracks().forEach(t=>t.stop());if(mode==="register"){registerStream=null;document.getElementById("registerVideo").hidden=true;document.getElementById("saveFace").disabled=true}else{attendanceStream=null;document.getElementById("attendanceVideo").hidden=true;document.getElementById("scanAttendance").disabled=true}}
+async function getFaceDescriptor(video){const r=await faceapi.detectSingleFace(video,new faceapi.TinyFaceDetectorOptions({inputSize:320,scoreThreshold:.5})).withFaceLandmarks().withFaceDescriptor();if(!r)throw Error("No clear face detected. Improve lighting and try again.");return Array.from(r.descriptor)}
+document.getElementById("startRegister").onclick=async()=>{try{if(!employees.length)throw Error("Add an employee first.");await loadModels();await openCamera(document.getElementById("registerVideo"),"register");document.getElementById("saveFace").disabled=false;setStatus("registerMessage","Camera ready. Look at the camera and scan.")}catch(e){setStatus("registerMessage",friendlyError(e),true)}};
+document.getElementById("saveFace").onclick=async()=>{
+ const employee=employees.find(e=>e.id===document.getElementById("registerEmployee").value);if(!employee)return setStatus("registerMessage","Select an employee first.",true);
+ try{const descriptor=await getFaceDescriptor(document.getElementById("registerVideo"));const i=faceProfiles.findIndex(p=>p.employeeId===employee.employeeId||(!p.employeeId&&p.name?.toLowerCase()===employee.name.toLowerCase()));
+ const profile={employeeId:employee.employeeId,employeeDocId:employee.id,name:employee.name,descriptor,createdAt:new Date().toISOString()};
+ if(i>=0)faceProfiles[i]=profile;else faceProfiles.push(profile);
+ if(saveFaceStore()){renderPeople();setStatus("registerMessage","Face registered for "+employee.employeeId+" — "+employee.name);stopCamera("register")}
+ }catch(e){setStatus("registerMessage",friendlyError(e),true)}
 };
-document.getElementById("saveFace").onclick = async () => {
-  const name=document.getElementById("registerName").value.trim();
-  if (!name) return setStatus("registerMessage","Enter a name first.",true);
-  try {
-    const descriptor=await getFaceDescriptor(document.getElementById("registerVideo"));
-    const index=faceProfiles.findIndex(p=>p.name.toLowerCase()===name.toLowerCase());
-    const profile={name,descriptor,createdAt:new Date().toISOString()};
-    if(index>=0) faceProfiles[index]=profile; else faceProfiles.push(profile);
-    if(saveFaceStore()){
-      renderPeople(); setStatus("registerMessage",`Face registered for ${name}.`);
-      document.getElementById("registerName").value="";
-      stopCamera("register"); document.getElementById("saveFace").disabled=true;
-    }
-  } catch(e) { setStatus("registerMessage",friendlyError(e),true); }
+document.getElementById("startAttendance").onclick=async()=>{try{await loadModels();if(!faceProfiles.length)throw Error("No faces registered on this device. Register an employee first.");await openCamera(document.getElementById("attendanceVideo"),"attendance");document.getElementById("scanAttendance").disabled=false;setStatus("scanMessage","Camera ready. Face the camera.")}catch(e){setStatus("scanMessage",friendlyError(e),true)}};
+function findMatch(descriptor){let best=null,dist=Infinity;for(const p of faceProfiles){const d=faceapi.euclideanDistance(descriptor,new Float32Array(p.descriptor));if(d<dist){dist=d;best=p}}return best&&dist<=MATCH_THRESHOLD?best:null}
+function getPosition(){return new Promise((resolve,reject)=>{if(!navigator.geolocation)return reject(Error("Geolocation unsupported."));navigator.geolocation.getCurrentPosition(resolve,e=>reject(Error(e.code===1?"Location permission denied.":"Unable to get location. Enable GPS and try again.")),{enableHighAccuracy:true,timeout:15000,maximumAge:0})})}
+document.getElementById("scanAttendance").onclick=async()=>{
+ const b=document.getElementById("scanAttendance");b.disabled=true;
+ try{const d=await getFaceDescriptor(document.getElementById("attendanceVideo")),match=findMatch(d);if(!match)throw Error("Face not recognized. Attendance not marked.");
+ const employee=employees.find(e=>e.employeeId===match.employeeId||e.id===match.employeeDocId);
+ if(!employee)throw Error("This face profile is not linked to an active employee. Register the face again.");
+ const date=localDate();if(attendance.some(x=>(x.employeeId===employee.employeeId||x.name?.toLowerCase()===employee.name.toLowerCase())&&x.date===date))throw Error(employee.name+" already has an attendance record today.");
+ setStatus("scanMessage","Face matched. Getting location…");const pos=await getPosition(),now=new Date();
+ const record={employeeId:employee.employeeId,employeeDocId:employee.id,name:employee.name,date,time:now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"}),status:"Present",latitude:pos.coords.latitude,longitude:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy),mapsUrl:`https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`,method:"Face scan",createdAt:serverTimestamp()};
+ await addDoc(attendanceRef,record);setStatus("scanMessage",`Attendance marked: ${employee.employeeId} — ${employee.name} at ${record.time}.`);stopCamera("attendance")
+ }catch(e){setStatus("scanMessage",friendlyError(e),true);if(attendanceStream)b.disabled=false}
 };
-
-document.getElementById("startAttendance").onclick = async () => {
-  try {
-    await loadModels();
-    if(!faceProfiles.length) throw new Error("No registered faces on this device yet. Register a person first.");
-    await openCamera(document.getElementById("attendanceVideo"), "attendance");
-    document.getElementById("scanAttendance").disabled=false;
-    setStatus("scanMessage","Camera ready. Ask the registered person to face the camera.");
-  } catch(e) { setStatus("scanMessage",friendlyError(e),true); }
-};
-function findMatch(descriptor) {
-  let best=null, bestDistance=Infinity;
-  for(const profile of faceProfiles) {
-    const distance=faceapi.euclideanDistance(descriptor, new Float32Array(profile.descriptor));
-    if(distance<bestDistance){bestDistance=distance;best=profile;}
-  }
-  return best && bestDistance <= MATCH_THRESHOLD ? best : null;
-}
-function getPosition() {
-  return new Promise((resolve,reject)=>{
-    if(!navigator.geolocation) return reject(new Error("Geolocation is not supported by this browser."));
-    navigator.geolocation.getCurrentPosition(resolve, e=>reject(new Error(
-      e.code===1 ? "Location permission was denied." : "Unable to get location. Enable GPS/location and try again."
-    )), {enableHighAccuracy:true,timeout:15000,maximumAge:0});
-  });
-}
-document.getElementById("scanAttendance").onclick = async () => {
-  const button=document.getElementById("scanAttendance"); button.disabled=true;
-  try {
-    const descriptor=await getFaceDescriptor(document.getElementById("attendanceVideo"));
-    const match=findMatch(descriptor);
-    if(!match) throw new Error("Face not recognized. Attendance was not marked.");
-    const date=localDate();
-    if(attendance.some(x=>x.name.toLowerCase()===match.name.toLowerCase() && x.date===date))
-      throw new Error(`${match.name} already has an attendance record for today.`);
-    setStatus("scanMessage","Face matched. Getting current location…");
-    const position=await getPosition();
-    const now=new Date();
-    const record={
-      name:match.name,date,
-      time:now.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"}),
-      status:"Present",
-      latitude:position.coords.latitude,
-      longitude:position.coords.longitude,
-      accuracy:Math.round(position.coords.accuracy),
-      mapsUrl:`https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`,
-      method:"Face scan",
-      createdAt:serverTimestamp()
-    };
-    await addDoc(attendanceRef,record);
-    setStatus("scanMessage",`Attendance marked for ${match.name} at ${record.time}.`);
-    stopCamera("attendance"); button.disabled=true;
-  } catch(e) { setStatus("scanMessage",friendlyError(e),true); }
-  finally { if(attendanceStream) button.disabled=false; }
-};
-
 document.getElementById("saveManual").onclick=async()=>{
-  const name=document.getElementById("person").value.trim();
-  const date=document.getElementById("date").value;
-  const status=document.getElementById("status").value;
-  if(!name||!date) return setStatus("message","Please enter a name and date.",true);
-  if(attendance.some(x=>x.name.toLowerCase()===name.toLowerCase()&&x.date===date))
-    return setStatus("message","Attendance already exists for this person on that date.",true);
-  try{
-    await addDoc(attendanceRef,{name,date,time:new Date().toLocaleTimeString(),status,latitude:"",longitude:"",mapsUrl:"",method:"Manual",createdAt:serverTimestamp()});
-    document.getElementById("person").value="";
-    document.getElementById("date").value=localDate();
-    setStatus("message","Attendance saved to Firebase successfully.");
-  }catch(e){setStatus("message",friendlyError(e),true);}
+ const employee=employees.find(e=>e.id===document.getElementById("manualEmployee").value),date=document.getElementById("date").value,status=document.getElementById("status").value;
+ if(!employee||!date)return setStatus("message","Select an employee and date.",true);
+ if(attendance.some(x=>(x.employeeId===employee.employeeId||x.name?.toLowerCase()===employee.name.toLowerCase())&&x.date===date))return setStatus("message","Attendance already exists for this employee on that date.",true);
+ try{await addDoc(attendanceRef,{employeeId:employee.employeeId,employeeDocId:employee.id,name:employee.name,date,time:new Date().toLocaleTimeString(),status,latitude:"",longitude:"",mapsUrl:"",method:"Manual",createdAt:serverTimestamp()});document.getElementById("manualEmployee").value="";document.getElementById("date").value=localDate();setStatus("message","Attendance saved successfully.")}
+ catch(e){setStatus("message",friendlyError(e),true)}
 };
-
-function renderPeople(){
-  const list=document.getElementById("registeredPeople"); list.innerHTML="";
-  faceProfiles.forEach((p,i)=>{
-    const li=document.createElement("li"); li.textContent=p.name+" ";
-    const btn=document.createElement("button"); btn.textContent="Remove"; btn.className="danger";
-    btn.style.width="auto"; btn.style.padding="5px 10px";
-    btn.onclick=()=>{if(confirm(`Remove face registration for ${p.name}?`)){faceProfiles.splice(i,1);saveFaceStore();renderPeople();}};
-    li.appendChild(btn); list.appendChild(li);
-  });
-}
-function renderRecords(){
-  const table=document.getElementById("records");
-  if(!table) return;
-  table.innerHTML="";
-  attendance.forEach(item=>{
-    const row=document.createElement("tr");
-    [item.name,item.date,item.time||"",item.status].forEach(value=>{
-      const cell=document.createElement("td"); cell.textContent=value||""; row.appendChild(cell);
-    });
-    const location=document.createElement("td");
-    if(item.mapsUrl){const a=document.createElement("a");a.href=item.mapsUrl;a.target="_blank";a.rel="noopener";a.textContent="View map";location.appendChild(a);}
-    else location.textContent="Not captured";
-    row.appendChild(location);
-    const action=document.createElement("td");const btn=document.createElement("button");
-    btn.textContent="Delete";btn.className="danger";btn.onclick=async()=>{
-      if(confirm("Delete this attendance record from the shared database?")){
-        try{await deleteDoc(doc(db,"attendance",item.id));}
-        catch(e){setStatus("message",friendlyError(e),true);}
-      }
-    };
-    action.appendChild(btn);row.appendChild(action);table.appendChild(row);
-  });
-  document.getElementById("total").textContent=attendance.length;
-  document.getElementById("present").textContent=attendance.filter(x=>x.status==="Present").length;
-  document.getElementById("absent").textContent=attendance.filter(x=>x.status==="Absent").length;
-}
-document.getElementById("download").onclick=()=>{
-  const columns=["Name","Date","Time","Status","Latitude","Longitude","Location URL","Accuracy (m)","Method"];
-  const rows=attendance.map(x=>[x.name,x.date,x.time||"",x.status,x.latitude??"",x.longitude??"",x.mapsUrl||"",x.accuracy??"",x.method||""]);
-  const csv=[columns,...rows].map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
-  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
-  const url=URL.createObjectURL(blob);const a=document.createElement("a");
-  a.href=url;a.download="Y5HUT_ATTENDANCE.csv";a.click();URL.revokeObjectURL(url);
-};
-</script>
-</body>
-</html>
+function renderPeople(){const list=document.getElementById("registeredPeople");list.innerHTML="";faceProfiles.forEach((p,i)=>{const li=document.createElement("li");li.textContent=(p.employeeId?p.employeeId+" — ":"")+p.name+" ";const btn=document.createElement("button");btn.textContent="Remove";btn.className="danger";btn.style.width="auto";btn.style.padding="5px 10px";btn.onclick=()=>{if(confirm("Remove face registration for "+p.name+"?")){faceProfiles.splice(i,1);saveFaceStore();renderPeople()}};li.append(btn);list.append(li)})}
+function renderRecords(){const table=document.getElementById("records");if(!table)return;table.innerHTML="";
+ attendance.forEach(item=>{const r=document.createElement("tr");[item.employeeId||"—",item.name,item.date,item.time||"",item.status].forEach(v=>{const c=document.createElement("td");c.textContent=v||"";r.append(c)});
+ const loc=document.createElement("td");if(item.mapsUrl){const a=document.createElement("a");a.href=item.mapsUrl;a.target="_blank";a.rel="noopener";a.textContent="View map";loc.append(a)}else loc.textContent="Not captured";r.append(loc);
+ const method=document.createElement("td");method.textContent=item.method||"";r.append(method);
+ const action=document.createElement("td"),btn=document.createElement("button");btn.textContent="Delete";btn.className="danger";btn.onclick=async()=>{if(confirm("Delete this attendance record?"))try{await deleteDoc(doc(db,"attendance",item.id))}catch(e){setStatus("message",friendlyError(e),true)}};action.append(btn);r.append(action);table.append(r)});
+ document.getElementById("total").textContent=attendance.length;document.getElementById("present").textContent=attendance.filter(x=>x.status==="Present").length;document.getElementById("absent").textContent=attendance.filter(x=>x.status==="Absent").length}
+document.getElementById("download").onclick=()=>{const cols=["Employee ID","Name","Date","Time","Status","Latitude","Longitude","Location URL","Accuracy (m)","Method"];const rows=attendance.map(x=>[x.employeeId||"",x.name,x.date,x.time||"",x.status,x.latitude??"",x.longitude??"",x.mapsUrl||"",x.accuracy??"",x.method||""]);const csv=[cols,...rows].map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="Y5HUT_ATTENDANCE.csv";a.click();URL.revokeObjectURL(url)};
+</script></body></html>
