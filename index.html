@@ -82,6 +82,7 @@ const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
 const attendanceRef=collection(db,"attendance"),employeesRef=collection(db,"employees");
 const MODEL_URL="https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights",MATCH_THRESHOLD=.50;
 let modelsReady=false,registerStream=null,attendanceStream=null,attendance=[],employees=[];
+  let pendingAttendanceRecord=null;
 let faceProfiles=readStore("y5hutFaceProfiles",[]),unsubscribeAttendance=null,unsubscribeEmployees=null,editingEmployeeId=null;
 
 function readStore(k,f){try{return JSON.parse(localStorage.getItem(k)||"null")??f}catch(_){return f}}
@@ -146,6 +147,125 @@ document.getElementById("startAttendance").onclick=async()=>{try{await loadModel
 function findMatch(descriptor){let best=null,dist=Infinity;for(const p of faceProfiles){const d=faceapi.euclideanDistance(descriptor,new Float32Array(p.descriptor));if(d<dist){dist=d;best=p}}return best&&dist<=MATCH_THRESHOLD?best:null}
 function getPosition(){return new Promise((resolve,reject)=>{if(!navigator.geolocation)return reject(Error("Geolocation unsupported."));navigator.geolocation.getCurrentPosition(resolve,e=>reject(Error(e.code===1?"Location permission denied.":"Unable to get location. Enable GPS and try again.")),{enableHighAccuracy:true,timeout:15000,maximumAge:0})})}
 document.getElementById("scanAttendance").onclick=async()=>{
+  function getAttendanceStatus(now) {
+  const minutes = now.getHours() * 60 + now.getMinutes();
+
+  if (minutes <= 550) return "ON TIME";
+  if (minutes <= 570) return "LATE";
+  if (minutes <= 600) return "TOO LATE";
+  if (minutes <= 660) return "OVER LATE";
+  return "HALF DAY";
+}
+
+document.getElementById("scanAttendance").onclick = async () => {
+  const button = document.getElementById("scanAttendance");
+  const reasonBox = document.getElementById("reasonBox");
+  const reasonInput = document.getElementById("lateReason");
+
+  button.disabled = true;
+
+  try {
+    // Save after reason is entered
+    if (pendingAttendanceRecord) {
+      const reason = reasonInput.value.trim();
+
+      if (pendingAttendanceRecord.status !== "ON TIME" && !reason) {
+        button.disabled = false;
+        return setStatus("scanMessage", "Please enter the reason.", true);
+      }
+
+      pendingAttendanceRecord.reason = reason;
+
+      await addDoc(attendanceRef, pendingAttendanceRecord);
+
+      setStatus(
+        "scanMessage",
+        "Attendance saved: " +
+        pendingAttendanceRecord.employeeId +
+        " — " + pendingAttendanceRecord.status
+      );
+
+      pendingAttendanceRecord = null;
+      reasonInput.value = "";
+      reasonBox.hidden = true;
+      button.textContent = "VERIFY FACE & MARK ATTENDANCE";
+      stopCamera("attendance");
+      return;
+    }
+
+    const descriptor = await getFaceDescriptor(
+      document.getElementById("attendanceVideo")
+    );
+
+    const match = findMatch(descriptor);
+
+    if (!match) throw Error("Face not recognized.");
+
+    const employee = employees.find(
+      e => e.employeeId === match.employeeId ||
+           e.id === match.employeeDocId
+    );
+
+    if (!employee) throw Error("Employee not found. Register face again.");
+
+    const date = localDate();
+
+    if (attendance.some(x =>
+      x.employeeId === employee.employeeId && x.date === date
+    )) {
+      throw Error("Attendance already marked today.");
+    }
+
+    setStatus("scanMessage", "Face matched. Getting location...");
+
+    const position = await getPosition();
+    const now = new Date();
+    const status = getAttendanceStatus(now);
+
+    pendingAttendanceRecord = {
+      employeeId: employee.employeeId,
+      employeeDocId: employee.id,
+      name: employee.name,
+      date: date,
+      time: now.toLocaleTimeString(),
+      status: status,
+      reason: "",
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+      accuracy: Math.round(position.coords.accuracy),
+      mapsUrl: `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`,
+      method: "Face scan",
+      createdAt: serverTimestamp()
+    };
+
+    if (status !== "ON TIME") {
+      reasonBox.hidden = false;
+      reasonInput.value = "";
+      button.textContent = "SAVE ATTENDANCE";
+      button.disabled = false;
+
+      setStatus(
+        "scanMessage",
+        "Status: " + status + ". Please enter the reason."
+      );
+      return;
+    }
+
+    await addDoc(attendanceRef, pendingAttendanceRecord);
+
+    setStatus("scanMessage", "Attendance saved: " + employee.name + " — ON TIME");
+
+    pendingAttendanceRecord = null;
+    stopCamera("attendance");
+
+  } catch (error) {
+    setStatus("scanMessage", friendlyError(error), true);
+  } finally {
+    if (attendanceStream || pendingAttendanceRecord) {
+      button.disabled = false;
+    }
+  }
+};
  const b=document.getElementById("scanAttendance");b.disabled=true;
  try{const d=await getFaceDescriptor(document.getElementById("attendanceVideo")),match=findMatch(d);if(!match)throw Error("Face not recognized. Attendance not marked.");
  const employee=employees.find(e=>e.employeeId===match.employeeId||e.id===match.employeeDocId);
